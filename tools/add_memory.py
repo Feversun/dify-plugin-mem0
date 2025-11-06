@@ -1,105 +1,87 @@
+"""Dify tool for adding a memory via Mem0 client."""
+
+import asyncio
 from collections.abc import Generator
-from typing import Any, Dict, List
-import json
-import httpx
+from typing import Any
+
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
+from utils.constants import ADD_ACCEPT_RESULT, ADD_SKIP_RESULT
+from utils.mem0_client import AsyncLocalClient
 
-class Mem0Tool(Tool):
+
+class AddMem0Tool(Tool):
+    """Tool to add user/assistant messages as a memory."""
+
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        # Get API key from credentials
-        api_key = self.runtime.credentials["mem0_api_key"]
-        
-        # Format messages
-        messages = [
-            {"role": "user", "content": tool_parameters["user"]},
-            {"role": "assistant", "content": tool_parameters["assistant"]}
-        ]
-        
-        # Prepare payload
-        payload = {
-            "messages": messages
-        }
-        
-        # Add entity IDs (at least one is recommended)
-        if tool_parameters.get("user_id"):
-            payload["user_id"] = tool_parameters["user_id"]
-        if tool_parameters.get("agent_id"):
-            payload["agent_id"] = tool_parameters["agent_id"]
-        if tool_parameters.get("app_id"):
-            payload["app_id"] = tool_parameters["app_id"]
-        if tool_parameters.get("run_id"):
-            payload["run_id"] = tool_parameters["run_id"]
-        
-        # Add metadata if provided
-        if tool_parameters.get("metadata"):
-            try:
-                metadata = json.loads(tool_parameters["metadata"])
-                payload["metadata"] = metadata
-            except json.JSONDecodeError as e:
-                yield self.create_json_message({
-                    "status": "error",
-                    "error": f"Invalid JSON in metadata: {str(e)}"
-                })
-                yield self.create_text_message(f"Failed to add memory: Invalid JSON in metadata: {str(e)}")
-                return
-        
-        # Add output format version if provided
-        if tool_parameters.get("output_format"):
-            payload["output_format"] = tool_parameters["output_format"]
-        
-        # Make direct HTTP request to mem0 API
-        try:
-            response = httpx.post(
-                "https://api.mem0.ai/v1/memories/",
-                json=payload,
-                headers={"Authorization": f"Token {api_key}"},
-                timeout=30
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            # Return JSON format
-            yield self.create_json_message({
-                "status": "success",
-                "messages": messages,
-                "memory_ids": [r["id"] for r in result if isinstance(r, dict) and r.get("event") == "ADD"]
-            })
-            
-            # Return text format
-            text_response = "Memory added successfully\n\n"
-            text_response += "Added messages:\n"
-            for msg in messages:
-                text_response += f"- {msg['role']}: {msg['content']}\n"
-            
-            memory_ids = [r["id"] for r in result if isinstance(r, dict) and r.get("event") == "ADD"]
-            if memory_ids:
-                text_response += f"\nMemory IDs: {', '.join(memory_ids)}"
-            
-            yield self.create_text_message(text_response)
-            
-        except httpx.HTTPStatusError as e:
-            error_message = f"HTTP error: {e.response.status_code}"
-            try:
-                error_data = e.response.json()
-                if "detail" in error_data:
-                    error_message = f"Error: {error_data['detail']}"
-            except:
-                pass
-            
-            yield self.create_json_message({
-                "status": "error",
-                "error": error_message
-            })
-            
+        # Required user_id
+        user_id = tool_parameters.get("user_id")
+        if not user_id:
+            error_message = "user_id is required"
+            yield self.create_json_message({"status": "error", "error": error_message})
             yield self.create_text_message(f"Failed to add memory: {error_message}")
-            
-        except Exception as e:
-            error_message = f"Error: {str(e)}"
-            
+            return
+
+        # Collect inputs (strip whitespace to avoid empty-only content)
+        user_text = (tool_parameters.get("user") or "").strip()
+        assistant_text = (tool_parameters.get("assistant") or "").strip()
+        agent_id = tool_parameters.get("agent_id")
+        app_id = tool_parameters.get("app_id")
+        run_id = tool_parameters.get("run_id")
+        metadata = tool_parameters.get("metadata")  # client parses JSON if string
+        output_format = tool_parameters.get("output_format")
+
+        # Build messages
+        messages = []
+        if user_text:
+            messages.append({"role": "user", "content": user_text})
+        if assistant_text:
+            messages.append({"role": "assistant", "content": assistant_text})
+
+        # Build payload (only include optional fields if provided)
+        payload: dict[str, Any] = {"messages": messages, "user_id": user_id}
+        if agent_id:
+            payload["agent_id"] = agent_id
+        if app_id:
+            payload["app_id"] = app_id
+        if run_id:
+            payload["run_id"] = run_id
+        if metadata:
+            payload["metadata"] = metadata
+        if output_format:
+            payload["output_format"] = output_format
+
+        try:
+            # Skip when no messages prepared or only blank content
+            if (
+                not messages
+                or not any(
+                    isinstance(m.get("content"), str) and m["content"].strip()
+                    for m in messages
+                )
+            ):
+                yield self.create_json_message({
+                    "status": "skipped",
+                    "messages": messages,
+                    **ADD_SKIP_RESULT,
+                })
+                yield self.create_text_message("Skipped memory addition for empty messages.")
+                return
+
+            client = AsyncLocalClient(self.runtime.credentials)
+            # Submit add to background event loop without awaiting (non-blocking)
+            loop = AsyncLocalClient.ensure_bg_loop()
+            asyncio.run_coroutine_threadsafe(client.add(payload), loop)
+
             yield self.create_json_message({
-                "status": "error",
-                "error": error_message
+                "status": "queued",
+                "messages": messages,
+                **ADD_ACCEPT_RESULT,
             })
-            
+
+            yield self.create_text_message("Asynchronous memory addition has been queued.")
+
+        except (ValueError, RuntimeError, TypeError) as e:
+            error_message = f"Error: {e!s}"
+            yield self.create_json_message({"status": "error", "error": error_message})
             yield self.create_text_message(f"Failed to add memory: {error_message}")

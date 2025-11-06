@@ -64,7 +64,7 @@
 
 ### 工具文件 (16个)
 - ✅ add_memory.yaml + .py
-- ✅ retrieve_memory.yaml + .py
+- ✅ search_memory.yaml + .py
 - ✅ get_all_memories.yaml + .py
 - ✅ get_memory.yaml + .py
 - ✅ update_memory.yaml + .py

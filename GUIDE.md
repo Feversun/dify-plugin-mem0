@@ -112,6 +112,20 @@ dify-plugin plugin package ./ROOT_DIRECTORY_OF_YOUR_PLUGIN
 you will get a `plugin.difypkg` file, that's all, you can submit it to the Marketplace now, look forward to your Plugin being listed!
 
 
+### Plugin-specific configuration (Mem0 Dify Plugin)
+
+This plugin runs in Local mode only. Provider credentials are:
+
+- Required (JSON objects):
+  - `local_llm_json`
+  - `local_embedder_json`
+  - `local_vector_db_json` (e.g., pgvector or pinecone)
+- Optional:
+  - `local_graph_db_json` (Neo4j)
+  - `local_reranker_json`
+
+Each JSON must be a map with shape: `{ "provider": <string>, "config": { ... } }`.
+
 ## User Privacy Policy
 
 Please fill in the privacy policy of the plugin if you want to make it published on the Marketplace, refer to [PRIVACY.md](PRIVACY.md) for more details.

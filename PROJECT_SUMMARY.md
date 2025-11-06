@@ -32,7 +32,7 @@
 - ✅ 添加 `output_format` 参数（v1.0/v1.1/v2）
 - ✅ `user_id` 改为可选
 
-#### retrieve_memory（增强 + v2 API）
+#### search_memory（增强 + v2 API）
 - ✅ 添加 `version` 参数（v1/v2）
 - ✅ 添加 `agent_id` 参数
 - ✅ 添加 `app_id` 参数
@@ -62,7 +62,7 @@
   - 1 个打包脚本（build_package.sh）
 
 - **修改文件**: 6 个
-  - 2 个工具增强（add_memory, retrieve_memory）
+  - 2 个工具增强（add_memory, search_memory）
   - 2 个配置文件（manifest.yaml, provider/mem0.yaml）
 
 ### 代码统计
@@ -157,8 +157,8 @@
 #### 增强工具（4个）
 13. ✅ `tools/add_memory.yaml` - 增强版
 14. ✅ `tools/add_memory.py` - 增强版
-15. ✅ `tools/retrieve_memory.yaml` - v2 支持
-16. ✅ `tools/retrieve_memory.py` - v2 支持
+15. ✅ `tools/search_memory.yaml` - v2 支持
+16. ✅ `tools/search_memory.py` - v2 支持
 
 ### 配置文件（2个）
 - ✅ `provider/mem0.yaml` - 更新
@@ -173,7 +173,7 @@
 | HTTP 方法 | 端点 | 实现工具 | 状态 |
 |----------|------|---------|------|
 | POST | `/v1/memories/` | add_memory | ✅ |
-| POST | `/v1/memories/search/` | retrieve_memory | ✅ |
+| POST | `/v1/memories/search/` | search_memory | ✅ |
 | GET | `/v1/memories/` | get_all_memories | ✅ |
 | GET | `/v1/memories/{id}/` | get_memory | ✅ |
 | PUT | `/v1/memories/{id}/` | update_memory | ✅ |

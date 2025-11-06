@@ -1,20 +1,18 @@
-version: 0.0.3
+version: 0.0.6
 type: plugin
-author: yevanchen
+author: beersoccer
 name: mem0
 label:
   en_US: mem0
   ja_JP: mem0
   zh_Hans: mem0
-  pt_BR: mem0
 description:
-  en_US: Dify integration for mem0 with full API v2 support
-  ja_JP: mem0のDify統合（完全なAPI v2サポート付き）
-  zh_Hans: mem0 的 Dify 集成（支持完整的 API v2 功能）
-  pt_BR: Integração Dify para mem0 com suporte completo à API v2
+  en_US: Dify plugin for mem0 with full API v2 support
+  ja_JP: mem0のDify プラグイン（完全なAPI v2サポート付き）
+  zh_Hans: mem0 的 Dify 插件（支持完整的 API v2 功能）
 icon: mem0.png
 resource:
-  memory: 268435456
+  memory: 667746000
   permission:
     tool:
       enabled: true
@@ -30,6 +28,6 @@ meta:
     language: python
     version: "3.12"
     entrypoint: main
-created_at: 2025-10-05T18:47:47+00:00
+created_at: 2025-10-24T09:09:09+00:00
 privacy: PRIVACY.md
 verified: false

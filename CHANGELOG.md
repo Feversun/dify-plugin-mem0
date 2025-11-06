@@ -160,7 +160,7 @@ All new features include complete translations:
 1. `user_id` in `add_memory` is now optional
    - **Action**: Ensure at least one of `user_id`, `agent_id`, `app_id`, or `run_id` is provided
 
-2. `user_id` in `retrieve_memory` is now optional
+2. `user_id` in `search_memory` is now optional
    - **Action**: Can use `filters` or other entity IDs instead
 
 **Recommended Updates:**

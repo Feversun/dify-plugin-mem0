@@ -1,38 +1,66 @@
 identity:
-  author: yevanchen
-  name: mem0ai
+  author: beersoccer
+  name: mem0
   label:
     en_US: mem0
     zh_Hans: mem0
-    pt_BR: mem0
   description:
     en_US: mem0
     zh_Hans: mem0
-    pt_BR: mem0
   icon: mem0.png
-
+  tags:
+    - utilities
 credentials_for_provider:
-  mem0_api_key:
-    type: secret-input
+  # Local mode: simplified JSON blocks
+  local_llm_json:
+    type: text-input
     required: true
     label:
-      en_US: Mem0 API key
-      zh_Hans: Mem0 API Key
-      pt_BR: Mem0 API key
+      en_US: LLM (JSON)
+      zh_Hans: LLM（JSON）
     placeholder:
-      en_US: Please input your Mem0 API key
-      zh_Hans: 请输入你的 Mem0 API Key
-      pt_BR: Please input your Mem0 API key
-    help:
-      en_US: Please visit the Mem0 AI Dashboard to register an account and apply for an API key
-      zh_Hans: 请访问 Mem0 AI 仪表板注册账号并获取 API Key
-      pt_BR: Please visit the Mem0 AI Dashboard to register an account and apply for an API key
-    url: https://app.mem0.ai/dashboard/api-keys
-
+      en_US: '{"provider":"azure_openai","config":{...}}'
+      zh_Hans: '{"provider":"azure_openai","config":{...}}'
+  local_embedder_json:
+    type: text-input
+    required: true
+    label:
+      en_US: Embedder (JSON)
+      zh_Hans: 向量模型（JSON）
+    placeholder:
+      en_US: '{"provider":"azure_openai","config":{...}}'
+      zh_Hans: '{"provider":"azure_openai","config":{...}}'
+  local_vector_db_json:
+    type: text-input
+    required: true
+    label:
+      en_US: Vector Database (JSON)
+      zh_Hans: 向量数据库（JSON）
+    placeholder:
+      en_US: '{"provider":"pgvector","config":{...}}'
+      zh_Hans: '{"provider":"pgvector","config":{...}}'
+  local_graph_db_json:
+    type: text-input
+    required: false
+    label:
+      en_US: Graph Database (JSON)
+      zh_Hans: 图数据库（JSON）
+    placeholder:
+      en_US: '{"provider":"neo4j","config":{...}}'
+      zh_Hans: '{"provider":"neo4j","config":{...}}'
+  local_reranker_json:
+    type: text-input
+    required: false
+    label:
+      en_US: Reranker (JSON)
+      zh_Hans: 重排序模型（JSON）
+    placeholder:
+      en_US: '{"provider":"cohere","config":{...}}'
+      zh_Hans: '{"provider":"cohere","config":{...}}'
 
 tools:
   - tools/add_memory.yaml
-  - tools/retrieve_memory.yaml
+  - tools/search_memory.yaml
   - tools/get_all_memories.yaml
   - tools/get_memory.yaml
   - tools/update_memory.yaml
@@ -42,5 +70,3 @@ tools:
 extra:
   python:
     source: provider/mem0.py
-
-

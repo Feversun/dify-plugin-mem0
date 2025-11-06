@@ -1,16 +1,16 @@
 identity:
   name: get_all_mem0ai_memories
-  author: yevanchen
+  author: beersoccer
   label:
     en_US: Get All Memories
     zh_Hans: 获取所有记忆
     pt_BR: Obter Todas as Memórias
 description:
   human:
-    en_US: Get all memories for a specific user, agent, app, or run
-    zh_Hans: 获取特定用户、代理、应用或运行的所有记忆
-    pt_BR: Obter todas as memórias para um usuário, agente, aplicativo ou execução específica
-  llm: Get all memories for a specific user, agent, app, or run
+    en_US: Get all memories for a specific user, agent, or run
+    zh_Hans: 获取特定用户、代理或运行的所有记忆
+    pt_BR: Obter todas as memórias para um usuário, agente ou execução específica
+  llm: Get all memories for a specific user, agent, or run
 parameters:
   - name: user_id
     type: string
@@ -20,10 +20,10 @@ parameters:
       zh_Hans: 用户ID
       pt_BR: ID do Usuário
     human_description:
-      en_US: The unique identifier for the user. At least one of user_id, agent_id, app_id, or run_id must be provided.
-      zh_Hans: 用户的唯一标识符。必须提供 user_id、agent_id、app_id 或 run_id 中的至少一个。
-      pt_BR: O identificador único do usuário. Pelo menos um de user_id, agent_id, app_id ou run_id deve ser fornecido.
-    llm_description: The unique identifier for the user. At least one of user_id, agent_id, app_id, or run_id must be provided.
+      en_US: The unique identifier for the user. At least one of user_id, agent_id, or run_id must be provided.
+      zh_Hans: 用户的唯一标识符。必须提供 user_id、agent_id 或 run_id 中的至少一个。
+      pt_BR: O identificador único do usuário. Pelo menos um de user_id, agent_id ou run_id deve ser fornecido.
+    llm_description: The unique identifier for the user. At least one of user_id, agent_id, or run_id must be provided.
     form: llm
   - name: agent_id
     type: string
@@ -37,19 +37,6 @@ parameters:
       zh_Hans: 代理的唯一标识符。
       pt_BR: O identificador único do agente.
     llm_description: The unique identifier for the agent.
-    form: llm
-  - name: app_id
-    type: string
-    required: false
-    label:
-      en_US: App ID
-      zh_Hans: 应用ID
-      pt_BR: ID do App
-    human_description:
-      en_US: The unique identifier for the application.
-      zh_Hans: 应用的唯一标识符。
-      pt_BR: O identificador único da aplicação.
-    llm_description: The unique identifier for the application.
     form: llm
   - name: run_id
     type: string

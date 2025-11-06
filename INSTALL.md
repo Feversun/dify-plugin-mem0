@@ -14,7 +14,7 @@
 #### 方法 A：通过 Dify 管理界面（推荐）
 
 1. **登录 Dify**
-   - 访问你的 Dify 实例（Self-hosted 或 SaaS）
+   - 访问你的 Dify 实例（自建或 Dify 云）
    - 例如：`https://your-dify-instance.com` 或 `https://cloud.dify.ai`
 
 2. **进入插件管理**
@@ -26,9 +26,11 @@
    - 选择 `mem0-0.0.3.difypkg` 文件
    - 等待上传和安装完成
 
-4. **配置 API Key**
+4. **配置本地模式凭证**
    - 安装完成后，点击插件的配置按钮
-   - 输入你的 **Mem0 API Key**
+   - 在 Provider 凭证中填写以下 JSON：
+     - 必填：`local_llm_json`、`local_embedder_json`、`local_vector_db_json`
+     - 可选：`local_graph_db_json`、`local_reranker_json`
    - 保存配置
 
 #### 方法 B：使用 Dify CLI（如果可用）
@@ -40,13 +42,36 @@ dify plugin install mem0-0.0.3.difypkg
 
 ---
 
-## 🔑 获取 Mem0 API Key
+## 🔧 本地配置示例
 
-1. 访问 [Mem0 AI Dashboard](https://app.mem0.ai/dashboard/api-keys)
-2. 注册或登录账号
-3. 进入 **API Keys** 页面
-4. 创建新的 API Key
-5. 复制并保存 API Key
+### 示例：pgvector（推荐在 `local_vector_db_json` 中设置维度）
+```json
+{
+  "provider": "pgvector",
+  "config": {
+    "connection_string": "postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require",
+    "collection_name": "mem0",
+    "embedding_model_dims": 1536,
+    "metric": "cosine"
+  }
+}
+```
+
+### 示例：Azure OpenAI 向量模型（`local_embedder_json`）
+```json
+{
+  "provider": "azure_openai",
+  "config": {
+    "model": "text-embedding-3-small",
+    "azure_kwargs": {
+      "api_version": "2024-10-21",
+      "azure_deployment": "text-embedding-3-small",
+      "azure_endpoint": "https://<your-endpoint>.cognitiveservices.azure.com/",
+      "api_key": "<your-azure-key>"
+    }
+  }
+}
+```
 
 ---
 
@@ -110,11 +135,11 @@ cd /Users/howsun/Warp/dify/mem0-plugin-update
 ```
 
 ### 问题 2：工具无法使用
-**原因**：API Key 未配置或无效
+**原因**：本地 JSON 配置缺失或无效
 **解决**：
-1. 检查 Mem0 API Key 是否正确
-2. 确认 API Key 有效且未过期
-3. 在插件设置中重新输入 API Key
+1. 确认已填写必填项：`local_llm_json`、`local_embedder_json`、`local_vector_db_json`
+2. 检查 JSON 结构是否为 `{ "provider": ..., "config": { ... } }`
+3. 对于 pgvector，优先提供可用的 `connection_string`
 
 ### 问题 3：v2 过滤器报错
 **原因**：JSON 格式错误
@@ -124,11 +149,10 @@ cd /Users/howsun/Warp/dify/mem0-plugin-update
 - 参考 CHANGELOG.md 中的示例
 
 ### 问题 4：HTTP 超时
-**原因**：网络连接问题或 API 响应慢
+**原因**：数据库/图数据库连接问题
 **解决**：
-- 检查网络连接
-- 确认可以访问 `api.mem0.ai`
-- 插件默认超时为 30 秒，应该足够
+- 检查向量库（如 pgvector/pinecone）或图数据库（Neo4j）连接配置
+- 确认凭证、地址与端口正确
 
 ---
 

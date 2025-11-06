@@ -1,0 +1,82 @@
+identity:
+  name: retrieve_mem0ai_memory
+  author: beersoccer
+  label:
+    en_US: Memory Retrieval
+    zh_Hans: 记忆检索
+description:
+  human:
+    en_US: Memory retrieval node
+    zh_Hans: 记忆检索节点
+  llm: Memory retrieval node
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    human_description:
+      en_US: The query string to search for specific memories.
+      zh_Hans: 用于搜索特定记忆的查询语句。
+    llm_description: The query string to search for specific memories.
+    form: llm
+  - name: user_id
+    type: string
+    required: true
+    label:
+      en_US: User ID
+      zh_Hans: 用户ID
+    human_description:
+      en_US: Required user identifier for scoping the retrieval.
+      zh_Hans: 必填，用于限定检索范围的用户标识符。
+    llm_description: Required user identifier for scoping the retrieval.
+    form: llm
+  - name: agent_id
+    type: string
+    required: false
+    label:
+      en_US: Agent ID
+      zh_Hans: 代理ID
+    human_description:
+      en_US: Optional agent identifier.
+      zh_Hans: 可选的代理标识符。
+    llm_description: Optional agent identifier.
+    form: llm
+  - name: run_id
+    type: string
+    required: false
+    label:
+      en_US: Run ID
+      zh_Hans: 运行ID
+    human_description:
+      en_US: Optional run identifier.
+      zh_Hans: 可选的运行标识符。
+    llm_description: Optional run identifier.
+    form: llm
+  - name: filters
+    type: string
+    required: false
+    label:
+      en_US: Advanced Filters (JSON)
+      zh_Hans: 高级过滤器（JSON）
+    human_description:
+      en_US: 'Advanced filters in JSON with AND/OR logic. Example: {"AND": [{"user_id": "alex"}, {"OR": [{"agent_id": "agent1"}, {"agent_id": "agent2"}]}]}'
+      zh_Hans: '高级过滤器，JSON 格式，支持 AND/OR 逻辑。例如：{"AND": [{"user_id": "alex"}, {"OR": [{"agent_id": "agent1"}, {"agent_id": "agent2"}]}]}'
+    llm_description: Advanced filters in JSON with AND/OR logic.
+    form: llm
+  - name: top_k
+    type: number
+    required: false
+    default: 5
+    label:
+      en_US: Top K
+      zh_Hans: Top K
+    human_description:
+      en_US: 'Optional maximum number of results to return (default: 5).'
+      zh_Hans: 可选，返回的最大结果数量（默认：5）。
+    llm_description: 'Optional maximum number of results to return (default: 5).'
+    form: llm
+extra:
+  python:
+    source: tools/search_memory.py

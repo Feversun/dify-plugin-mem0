@@ -77,7 +77,7 @@ done
 ✅ get_all_memories.yaml
 ✅ get_memory.yaml
 ✅ get_memory_history.yaml
-✅ retrieve_memory.yaml
+✅ searh_memory.yaml
 ✅ update_memory.yaml
 ```
 
@@ -99,7 +99,7 @@ done
 | 文件 | 状态 | 说明 |
 |------|------|------|
 | `tools/add_memory.yaml` | ✅ 已修复 | 第 101-103 行，metadata 参数描述 |
-| `tools/retrieve_memory.yaml` | ✅ 无需修复 | 已正确使用引号 |
+| `tools/search_memory.yaml` | ✅ 无需修复 | 已正确使用引号 |
 | 其他工具 YAML 文件 | ✅ 无问题 | 语法正确 |
 
 ---

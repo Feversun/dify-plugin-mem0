@@ -117,8 +117,8 @@ dify-plugin-mem0/
 ├── tools/
 │   ├── add_memory.yaml
 │   ├── add_memory.py
-│   ├── retrieve_memory.yaml
-│   ├── retrieve_memory.py
+│   ├── search_memory.yaml
+│   ├── search_memory.py
 │   ├── get_all_memories.yaml
 │   ├── get_all_memories.py
 │   ├── get_memory.yaml
@@ -167,6 +167,8 @@ cat > LICENSE << 'EOF'
 MIT License
 
 Copyright (c) 2025 yevanchen
+Modified and Enhanced by: beersoccer
+Copyright (c) 2025 beersoccer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -224,7 +226,7 @@ git init
 git add .
 
 # 4. 创建提交
-git commit -m "feat: Mem0 Dify Plugin v0.0.3
+git commit -m "feat: Mem0 Dify Plugin v0.0.6
 
 - 8 complete memory management tools
 - Full Mem0 API v2 support

@@ -1,10 +1,10 @@
-# Mem0 Dify Plugin v0.0.3
+# Mem0 Dify Plugin v0.0.6
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dify Plugin](https://img.shields.io/badge/Dify-Plugin-blue)](https://dify.ai)
 [![Mem0 AI](https://img.shields.io/badge/Mem0-AI-green)](https://mem0.ai)
 
-A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelligent memory layer, providing **8 powerful tools** with full **API v2 support** including advanced filtering, metadata, and multi-entity management.
+A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelligent memory layer, providing **8 tools** with a unified client for **Local** deployments. It supports Mem0 API v2 advanced filtering, metadata, and streamlined configuration for self-hosted setups.
 
 ![Dashboard](./_assets/dashboard.png)
 
@@ -14,7 +14,7 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 
 ### Complete Memory Management (8 Tools)
 - ✅ **Add Memory** - Create memories with metadata and multi-entity support
-- ✅ **Retrieve Memory** - Search with v2 advanced filters (AND/OR logic)
+- ✅ **Search Memory** - Search with v2 advanced filters (AND/OR logic) and top_k limiting
 - ✅ **Get All Memories** - List memories with pagination
 - ✅ **Get Memory** - Fetch specific memory details
 - ✅ **Update Memory** - Modify existing memories
@@ -23,12 +23,14 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 - ✅ **Get Memory History** - View change history
 
 ### Advanced Capabilities
-- 🚀 **Mem0 API v2** - Full support with advanced filters
-- 🎯 **Multi-Entity Support** - user_id, agent_id, app_id, run_id
+- 🖥️ **Local Mode Only** - Run with Local Mem0 (JSON-based config)
+- 🧱 **Simplified Local Config** - 5 JSON blocks: LLM, Embedder, Vector DB, Graph DB (optional), Reranker (optional)
+- 🔌 **Mem0 API v2** - Advanced filters with AND/OR logic
+- 🎯 **Entity Scoping** - user_id (required for add), agent_id, run_id
 - 📊 **Metadata System** - Custom JSON metadata for rich context
 - 🔍 **Complex Filters** - AND/OR logic for precise queries
 - 🌍 **Internationalized** - 4 languages (en/zh/pt/ja)
-- ♻️ **100% Backward Compatible** - Works with existing workflows
+- ♻️ **Backwards-friendly** - Tools keep their YAML interfaces while routing via the unified client
 
 ---
 
@@ -42,16 +44,17 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
    - Enter your repository URL
    - Click `Install`
 
-2. **Configure API Key**
-   - Get your API key from [Mem0 Dashboard](https://app.mem0.ai/dashboard/api-keys)
-   - Enter it in the plugin settings
+2. **Configure Provider Credentials (Local)**
+   - In plugin settings, fill these JSON blocks:
+     - Required: `local_llm_json`, `local_embedder_json`, `local_vector_db_json`
+     - Optional: `local_graph_db_json`, `local_reranker_json`
 
 3. **Start Using**
    - All 8 tools are now available in your workflows!
 
 ### Method 2: Install from Package
 
-Download `mem0-0.0.3.difypkg` from [Releases](../../releases) and upload it manually in Dify.
+Download `mem0-0.0.4.difypkg` from [Releases](../../releases) and upload it manually in Dify.
 
 ---
 
@@ -59,7 +62,7 @@ Download `mem0-0.0.3.difypkg` from [Releases](../../releases) and upload it manu
 
 ### Basic Usage
 
-#### Add a Memory
+#### Add a Memory (user_id required)
 ```json
 {
   "user": "I love Italian food",
@@ -72,7 +75,8 @@ Download `mem0-0.0.3.difypkg` from [Releases](../../releases) and upload it manu
 ```json
 {
   "query": "What food does alex like?",
-  "user_id": "alex"
+  "user_id": "alex",
+  "top_k": 5
 }
 ```
 
@@ -112,8 +116,8 @@ Download `mem0-0.0.3.difypkg` from [Releases](../../releases) and upload it manu
 
 | Tool | Description | v2 Support |
 |------|-------------|-----------|
-| `add_mem0ai_memory` | Add new memories with metadata | ✅ |
-| `retrieve_mem0ai_memory` | Search with advanced filters | ✅ |
+| `add_mem0ai_memory` | Add new memories (user_id required) | ✅ |
+| `retrieve_mem0ai_memory` | Search with advanced filters and top_k | ✅ |
 | `get_all_mem0ai_memories` | List all memories | ✅ |
 | `get_mem0ai_memory` | Get specific memory | ✅ |
 | `update_mem0ai_memory` | Update memory content | ✅ |
@@ -171,12 +175,31 @@ search("user preferences",
 
 ### Requirements
 - Dify instance (self-hosted or cloud)
-- Mem0 API key ([Get one here](https://app.mem0.ai/dashboard/api-keys))
 - Python 3.12+ (for local development)
+- Dependencies: dify_plugin, httpx, openai, mem0, neo4j, psycopg2-binary
 
-### Environment Variables (for development)
-```bash
-MEM0_API_KEY=your_api_key_here
+### Provider Credentials (Local Only)
+- Required (paste JSON for each):
+  - `local_llm_json`
+  - `local_embedder_json`
+  - `local_vector_db_json` (e.g., pgvector or pinecone)
+- Optional:
+  - `local_graph_db_json` (Neo4j)
+  - `local_reranker_json`
+
+Example Vector DB JSON (pgvector):
+```json
+{
+  "provider": "pgvector",
+  "config": {
+    "dbname": "dify",
+    "user": "postgres",
+    "password": "<password>",
+    "host": "<host>",
+    "port": "5432",
+    "sslmode": "disable"
+  }
+}
 ```
 
 ---
@@ -216,6 +239,7 @@ done
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.0.4 | 2025-10-29 | Dual-mode (SaaS/Local), unified client, simplified Local JSON config, search top_k, add requires user_id, HTTP→SDK refactor |
 | v0.0.3 | 2025-10-06 | Added 6 new tools, v2 API support, metadata, multi-entity |
 | v0.0.2 | 2025-02-24 | Basic add and retrieve functionality |
 | v0.0.1 | Initial | First release |
@@ -264,4 +288,16 @@ If you find this plugin useful, please give it a ⭐ on GitHub!
 
 ---
 
-**Made with ❤️ by yevanchen**
+### 🌟 Acknowledgments and Origin
+
+This project is a **deeply modified and enhanced** version of the excellent [dify-plugin-mem0](https://github.com/Feversun/dify-plugin-mem0) project by **yevanchen**.
+
+I sincerely appreciate the foundational work and outstanding contribution of the original author, yevanchen. The project provided a solid foundation for my localized, high-performance, and asynchronous plugin.
+
+**Key Differences from the Original Project:**
+
+The original project primarily supported Mem0 platform (SaaS mode) and synchronous request handling. This project has been fully refactored to include:
+* **Local Mode**: Supports configuring and running the user's own LLM, embedding models, vector databases (e.g., pgvector/Milvus), graph databases, and more.
+* **Asynchronous Support**: Utilizes asynchronous request handling, significantly improving performance and concurrency.
+
+[Original Project Repository Link](https://github.com/Feversun/dify-plugin-mem0)

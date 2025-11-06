@@ -1,16 +1,14 @@
 identity:
   name: add_mem0ai_memory
-  author: yevanchen
+  author: beersoccer
   label:
     en_US: Add Memory
-    zh_Hans: 添加内存
-    pt_BR: Adicionar Memória
+    zh_Hans: 记忆添加
 description:
   human:
-    en_US: Add memory support
-    zh_Hans: 添加内存支持
-    pt_BR: Adicionar suporte à memória
-  llm: Add memory support
+    en_US: Add memory node
+    zh_Hans: 记忆添加节点
+  llm: Add memory node
 parameters:
   - name: user
     type: string
@@ -18,38 +16,32 @@ parameters:
     label:
       en_US: User Message
       zh_Hans: 用户消息
-      pt_BR: Mensagem do Usuário
     human_description:
       en_US: The message from the user in the conversation.
       zh_Hans: 对话中的用户消息。
-      pt_BR: A mensagem do usuário na conversa.
     llm_description: The message from the user in the conversation.
     form: llm
   - name: assistant
     type: string
-    required: true
+    required: false
     label:
       en_US: Assistant Response
       zh_Hans: 助手回应
-      pt_BR: Resposta do Assistente
     human_description:
       en_US: The response from the assistant in the conversation.
       zh_Hans: 对话中的助手回应。
-      pt_BR: A resposta do assistente na conversa.
     llm_description: The response from the assistant in the conversation.
     form: llm
   - name: user_id
     type: string
-    required: false
+    required: true
     label:
       en_US: User ID
       zh_Hans: 用户ID
-      pt_BR: ID do Usuário
     human_description:
-      en_US: User ID (at least one of user_id, agent_id, app_id, or run_id should be provided)
-      zh_Hans: 用户ID（必须提供 user_id、agent_id、app_id 或 run_id 中的至少一个）
-      pt_BR: ID do Usuário (pelo menos um de user_id, agent_id, app_id ou run_id deve ser fornecido)
-    llm_description: User ID (at least one of user_id, agent_id, app_id, or run_id should be provided)
+      en_US: Required. The unique user identifier.
+      zh_Hans: 必填。用户的唯一标识符。
+    llm_description: Required user identifier.
     form: llm
   - name: agent_id
     type: string
@@ -57,38 +49,22 @@ parameters:
     label:
       en_US: Agent ID
       zh_Hans: 代理ID
-      pt_BR: ID do Agente
     human_description:
-      en_US: The unique identifier for the agent.
-      zh_Hans: 代理的唯一标识符。
-      pt_BR: O identificador único do agente.
-    llm_description: The unique identifier for the agent.
+      en_US: Optional agent identifier.
+      zh_Hans: 可选的代理标识符。
+    llm_description: Optional agent identifier.
     form: llm
-  - name: app_id
-    type: string
-    required: false
-    label:
-      en_US: App ID
-      zh_Hans: 应用ID
-      pt_BR: ID do App
-    human_description:
-      en_US: The unique identifier for the application.
-      zh_Hans: 应用的唯一标识符。
-      pt_BR: O identificador único da aplicação.
-    llm_description: The unique identifier for the application.
-    form: llm
+  
   - name: run_id
     type: string
     required: false
     label:
       en_US: Run ID
       zh_Hans: 运行ID
-      pt_BR: ID da Execução
     human_description:
-      en_US: The unique identifier for the run.
-      zh_Hans: 运行的唯一标识符。
-      pt_BR: O identificador único da execução.
-    llm_description: The unique identifier for the run.
+      en_US: Optional run identifier.
+      zh_Hans: 可选的运行标识符。
+    llm_description: Optional run identifier.
     form: llm
   - name: metadata
     type: string
@@ -96,11 +72,9 @@ parameters:
     label:
       en_US: Metadata (JSON)
       zh_Hans: 元数据（JSON）
-      pt_BR: Metadados (JSON)
     human_description:
       en_US: 'Optional metadata as JSON string (e.g., {"category": "food", "priority": "high"})'
       zh_Hans: '可选的元数据，JSON 字符串格式（例如：{"category": "food", "priority": "high"})'
-      pt_BR: 'Metadados opcionais como string JSON (por exemplo, {"category": "food", "priority": "high"})'
     llm_description: Optional metadata as JSON string
     form: llm
   - name: output_format
@@ -109,11 +83,9 @@ parameters:
     label:
       en_US: Output Format Version
       zh_Hans: 输出格式版本
-      pt_BR: Versão do Formato de Saída
     human_description:
       en_US: The version of the output format (v1.0, v1.1, or v2). Default is v1.1.
       zh_Hans: 输出格式的版本（v1.0、v1.1 或 v2）。默认为 v1.1。
-      pt_BR: A versão do formato de saída (v1.0, v1.1 ou v2). Padrão é v1.1.
     llm_description: The version of the output format. Default is v1.1.
     form: form
     options:
@@ -121,17 +93,14 @@ parameters:
         label:
           en_US: v1.0
           zh_Hans: v1.0
-          pt_BR: v1.0
       - value: v1.1
         label:
           en_US: v1.1 (default)
           zh_Hans: v1.1（默认）
-          pt_BR: v1.1 (padrão)
       - value: v2
         label:
           en_US: v2
           zh_Hans: v2
-          pt_BR: v2
 extra:
   python:
     source: tools/add_memory.py
