@@ -1,24 +1,24 @@
-version: 0.0.6
+version: 0.1.4
 type: plugin
 author: beersoccer
-name: mem0
+name: mem0ai
 label:
-  en_US: mem0
-  ja_JP: mem0
-  zh_Hans: mem0
+  en_US: mem0ai
+  ja_JP: mem0ai
+  zh_Hans: mem0ai
 description:
-  en_US: Dify plugin for mem0 with full API v2 support
-  ja_JP: mem0のDify プラグイン（完全なAPI v2サポート付き）
-  zh_Hans: mem0 的 Dify 插件（支持完整的 API v2 功能）
-icon: mem0.png
+  en_US: Local-only mem0 plugin, async_mode enabled by default. Write ops (Add/Update/Delete) are non-blocking in async mode, Read ops (Search/Get) always wait; in sync mode all operations block.
+  ja_JP: ローカル専用の mem0 プラグイン，async_mode は既定で有効。非同期時は書込操作（Add/Update/Delete）非ブロッキング，読取操作（Search/Get）は常に待機，同期時はすべての操作が完了までブロック。
+  zh_Hans: 仅本地模式的 mem0 插件，async_mode 默认开启。异步模式下写操作（Add/Update/Delete）非阻塞，读操作（Search/Get）始终等待，同步模式下所有操作阻塞直至完成。
+icon: mem0_plugin.png
 resource:
-  memory: 667746000
+  memory: 914471000
   permission:
     tool:
       enabled: true
 plugins:
   tools:
-    - provider/mem0.yaml
+    - provider/mem0ai.yaml
 meta:
   version: 0.0.1
   arch:

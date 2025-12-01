@@ -1,14 +1,14 @@
 identity:
-  name: add_mem0ai_memory
+  name: add_memory
   author: beersoccer
   label:
     en_US: Add Memory
-    zh_Hans: 记忆添加
+    zh_Hans: 添加记忆
 description:
   human:
-    en_US: Add memory node
-    zh_Hans: 记忆添加节点
-  llm: Add memory node
+    en_US: Intelligently manage memories in Mem0 by adding, updating, or deleting based on user interactions
+    zh_Hans: 根据用户交互智能管理 Mem0 中的记忆，包括添加、更新或删除
+  llm: Use this tool to intelligently manage memories in Mem0. It can add new memories, update existing ones, or delete outdated information based on user-assistant interactions. Mem0 will automatically determine whether to add, update, or delete memories based on the context.
 parameters:
   - name: user
     type: string
@@ -28,9 +28,9 @@ parameters:
       en_US: Assistant Response
       zh_Hans: 助手回应
     human_description:
-      en_US: The response from the assistant in the conversation.
-      zh_Hans: 对话中的助手回应。
-    llm_description: The response from the assistant in the conversation.
+      en_US: Optional. The response from the assistant in the conversation. Leave empty if not applicable.
+      zh_Hans: 可选。对话中的助手回应。如果不适用请留空。
+    llm_description: Optional assistant response in the conversation. Only provide if there is a distinct assistant reply to remember. Leave empty otherwise.
     form: llm
   - name: user_id
     type: string
@@ -50,11 +50,10 @@ parameters:
       en_US: Agent ID
       zh_Hans: 代理ID
     human_description:
-      en_US: Optional agent identifier.
-      zh_Hans: 可选的代理标识符。
-    llm_description: Optional agent identifier.
+      en_US: Optional agent identifier. Only provide if you need to associate this memory with a specific agent. Leave empty otherwise.
+      zh_Hans: 可选的代理标识符。仅在需要将此记忆与特定代理关联时提供。否则留空。
+    llm_description: Optional agent identifier. Only provide if associating this memory with a specific agent. Leave empty otherwise.
     form: llm
-  
   - name: run_id
     type: string
     required: false
@@ -62,9 +61,9 @@ parameters:
       en_US: Run ID
       zh_Hans: 运行ID
     human_description:
-      en_US: Optional run identifier.
-      zh_Hans: 可选的运行标识符。
-    llm_description: Optional run identifier.
+      en_US: Optional run identifier. Only provide if you need to associate this memory with a specific run. Leave empty otherwise.
+      zh_Hans: 可选的运行标识符。仅在需要将此记忆与特定运行关联时提供。否则留空。
+    llm_description: Optional run identifier. Only provide if associating this memory with a specific run. Leave empty otherwise.
     form: llm
   - name: metadata
     type: string
@@ -73,9 +72,9 @@ parameters:
       en_US: Metadata (JSON)
       zh_Hans: 元数据（JSON）
     human_description:
-      en_US: 'Optional metadata as JSON string (e.g., {"category": "food", "priority": "high"})'
-      zh_Hans: '可选的元数据，JSON 字符串格式（例如：{"category": "food", "priority": "high"})'
-    llm_description: Optional metadata as JSON string
+      en_US: Optional metadata as JSON string. Only provide if you need to attach custom metadata to this memory. Leave empty otherwise.
+      zh_Hans: 可选的元数据，JSON 字符串格式。仅在需要为此记忆附加自定义元数据时提供。否则留空。
+    llm_description: Optional metadata as JSON string. Only provide if attaching custom metadata is needed. Leave empty otherwise.
     form: llm
   - name: output_format
     type: select

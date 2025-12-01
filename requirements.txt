@@ -4,4 +4,6 @@ azure-identity
 langchain-neo4j
 rank-bm25
 psycopg2-binary
+transformers
+torch
 dify_plugin

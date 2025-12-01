@@ -1,17 +1,26 @@
 identity:
   author: beersoccer
-  name: mem0
+  name: mem0ai
   label:
-    en_US: mem0
-    zh_Hans: mem0
+    en_US: mem0ai
+    zh_Hans: mem0ai
   description:
-    en_US: mem0
-    zh_Hans: mem0
-  icon: mem0.png
+    en_US: mem0ai plugin, local-only mode, async_mode enabled by default.
+    zh_Hans: mem0ai 插件，仅本地模式，async_mode 默认开启。
+  icon: mem0_plugin.png
   tags:
     - utilities
 credentials_for_provider:
-  # Local mode: simplified JSON blocks
+  async_mode:
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Async Mode
+      zh_Hans: 异步模式
+    help:
+      en_US: "When async mode is enabled, all Mem0 operations run asynchronously and concurrently. Search waits for results; Add does not."
+      zh_Hans: "开启异步模式后，所有Mem0的操作都异步并发执行，Search操作会等待返回结果而Add操作不会。"
   local_llm_json:
     type: text-input
     required: true
@@ -69,4 +78,4 @@ tools:
   - tools/get_memory_history.yaml
 extra:
   python:
-    source: provider/mem0.py
+    source: provider/mem0ai.py

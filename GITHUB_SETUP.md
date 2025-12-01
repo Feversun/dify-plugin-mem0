@@ -132,7 +132,7 @@ dify-plugin-mem0/
 │   ├── get_memory_history.yaml
 │   └── get_memory_history.py
 └── _assets/
-    ├── mem0.png           # 图标
+    ├── mem0_plugin.png           # 图标
     └── ...                # 其他资源
 ```
 
@@ -167,7 +167,7 @@ cat > LICENSE << 'EOF'
 MIT License
 
 Copyright (c) 2025 yevanchen
-Modified and Enhanced by: beersoccer
+Extensively Refactored and Significantly Enhanced by: beersoccer
 Copyright (c) 2025 beersoccer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -226,7 +226,7 @@ git init
 git add .
 
 # 4. 创建提交
-git commit -m "feat: Mem0 Dify Plugin v0.0.6
+git commit -m "feat: Mem0 Dify Plugin v0.0.8
 
 - 8 complete memory management tools
 - Full Mem0 API v2 support

@@ -1,17 +1,10 @@
-# Mem0 Dify Plugin v0.0.3 - 安装指南
+# Mem0 Dify Plugin v0.1.4 - 安装指南
 
 ## 📦 安装步骤
 
-### 1. 获取插件包
+### 1. 安装插件
 
-插件已打包为 `.difypkg` 文件：
-- **文件名**: `mem0-0.0.3.difypkg`
-- **大小**: ~600KB
-- **位置**: `/Users/howsun/Warp/dify/mem0-plugin-update/`
-
-### 2. 上传到 Dify
-
-#### 方法 A：通过 Dify 管理界面（推荐）
+按照 Dify 官方插件安装指南进行安装：
 
 1. **登录 Dify**
    - 访问你的 Dify 实例（自建或 Dify 云）
@@ -21,54 +14,133 @@
    - 导航到 **Settings** → **Plugins**
    - 或直接访问 `/plugins` 路径
 
-3. **上传插件**
-   - 点击 **"Upload Plugin"** 或 **"安装插件"** 按钮
-   - 选择 `mem0-0.0.3.difypkg` 文件
+3. **安装插件**
+   - 点击 **"Install from GitHub"** 或 **"上传插件"** 按钮
+   - 如果从 GitHub 安装：输入仓库 URL
+   - 如果从包安装：选择 `mem0ai-0.1.4.difypkg` 文件
    - 等待上传和安装完成
 
-4. **配置本地模式凭证**
-   - 安装完成后，点击插件的配置按钮
-   - 在 Provider 凭证中填写以下 JSON：
-     - 必填：`local_llm_json`、`local_embedder_json`、`local_vector_db_json`
-     - 可选：`local_graph_db_json`、`local_reranker_json`
-   - 保存配置
+### 2. 配置插件
 
-#### 方法 B：使用 Dify CLI（如果可用）
+安装完成后，按照以下步骤配置插件：
 
-```bash
-# 如果你有 dify-cli 工具
-dify plugin install mem0-0.0.3.difypkg
-```
+#### 步骤 1：选择运行模式
+
+首先选择插件的运行模式：
+
+- **异步模式**（推荐用于生产环境）
+  - 设置 `async_mode` 为 `true`（默认值）
+  - 支持高并发
+  - 写操作（Add/Update/Delete）非阻塞，立即返回
+  - 读操作（Search/Get）等待结果，具有超时保护
+  - 适合生产环境的高流量场景
+
+- **同步模式**（推荐用于测试环境）
+  - 设置 `async_mode` 为 `false`
+  - 所有操作阻塞直到完成
+  - 可以立即看到每次记忆操作的实际返回结果
+  - 适合测试和调试
+  - **注意**：同步模式没有超时保护。如果需要超时保护，请使用 `async_mode=true`
+
+#### 步骤 2：配置模型和数据库
+
+在插件设置中配置以下 JSON 块。详细的配置选项和支持的提供者，请参考 [Mem0 官方配置文档](https://docs.mem0.ai/open-source/configuration)。
+
+**必填项：**
+- `local_llm_json` - LLM 提供者配置
+- `local_embedder_json` - 嵌入模型配置
+- `local_vector_db_json` - 向量数据库配置
+
+**可选项：**
+- `local_graph_db_json` - 图数据库配置（如 Neo4j）
+- `local_reranker_json` - 重排序器配置
 
 ---
 
-## 🔧 本地配置示例
+## 🔧 配置示例
 
-### 示例：pgvector（推荐在 `local_vector_db_json` 中设置维度）
-```json
-{
-  "provider": "pgvector",
-  "config": {
-    "connection_string": "postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require",
-    "collection_name": "mem0",
-    "embedding_model_dims": 1536,
-    "metric": "cosine"
-  }
-}
-```
+> **📚 参考文档**：详细的配置选项和支持的提供者，请参考 [Mem0 官方配置文档](https://docs.mem0.ai/open-source/configuration)。
 
-### 示例：Azure OpenAI 向量模型（`local_embedder_json`）
+### LLM 配置 (`local_llm_json`)
+
 ```json
 {
   "provider": "azure_openai",
   "config": {
-    "model": "text-embedding-3-small",
+    "model": "your-deployment-name",
+    "temperature": 0.1,
+    "max_tokens": 256,
     "azure_kwargs": {
-      "api_version": "2024-10-21",
-      "azure_deployment": "text-embedding-3-small",
-      "azure_endpoint": "https://<your-endpoint>.cognitiveservices.azure.com/",
-      "api_key": "<your-azure-key>"
+      "azure_deployment": "your-deployment-name",
+      "api_version": "version-to-use",
+      "azure_endpoint": "your-api-base-url",
+      "api_key": "your-api-key",
+      "default_headers": {
+        "CustomHeader": "your-custom-header"
+      }
     }
+  }
+}
+```
+
+### Embedder 配置 (`local_embedder_json`)
+
+```json
+{
+  "provider": "azure_openai",
+  "config": {
+    "model": "your-deployment-name",
+    "azure_kwargs": {
+      "api_version": "version-to-use",
+      "azure_deployment": "your-deployment-name",
+      "azure_endpoint": "your-api-base-url",
+      "api_key": "your-api-key",
+      "default_headers": {
+        "CustomHeader": "your-custom-header"
+      }
+    }
+  }
+}
+```
+
+### Vector Store 配置 (`local_vector_db_json`)
+
+```json
+{
+  "provider": "pgvector",
+  "config": {
+    "dbname": "your-vector-db-name",
+    "user": "your-vector-db-user",
+    "password": "your-vector-db-password",
+    "host": "your-vector-db-host",
+    "port": "your-vector-db-port",
+    "sslmode": "require or disable"
+  }
+}
+```
+
+### Graph Store 配置 (`local_graph_db_json`) - 可选
+
+```json
+{
+  "provider": "neo4j",
+  "config": {
+    "url": "neo4j+s://<HOST>",
+    "username": "your-graph-db-user",
+    "password": "your-graph-db-password"
+  }
+}
+```
+
+### Reranker 配置 (`local_reranker_json`) - 可选
+
+```json
+{
+  "provider": "cohere",
+  "config": {
+    "model": "your-model-name",
+    "api_key": "your-cohere-api-key",
+    "top_k": 5
   }
 }
 ```
@@ -77,11 +149,11 @@ dify plugin install mem0-0.0.3.difypkg
 
 ## ✅ 验证安装
 
-安装完成后，你应该能看到以下 8 个工具：
+配置完成后，你应该能在 Dify 工作流中使用以下 8 个工具：
 
 ### 核心功能工具
-1. ✅ **Add Memory** - 添加记忆
-2. ✅ **Retrieve Memory** - 搜索记忆（支持 v2 高级过滤）
+1. ✅ **Add Memory** - 智能管理记忆（添加/更新/删除）
+2. ✅ **Search Memory** - 搜索记忆（支持过滤器和 top_k）
 3. ✅ **Get All Memories** - 获取所有记忆
 4. ✅ **Get Memory** - 获取单条记忆详情
 5. ✅ **Update Memory** - 更新记忆
@@ -108,15 +180,14 @@ dify plugin install mem0-0.0.3.difypkg
 {
   "query": "What food does the user like?",
   "user_id": "test_user_001",
-  "version": "v1"
+  "top_k": 5
 }
 ```
 
-### 测试 3：使用 v2 高级过滤
+### 测试 3：使用过滤器
 ```json
 {
   "query": "user preferences",
-  "version": "v2",
   "filters": "{\"AND\": [{\"user_id\": \"test_user_001\"}]}"
 }
 ```
@@ -130,18 +201,19 @@ dify plugin install mem0-0.0.3.difypkg
 **解决**：
 ```bash
 # 重新生成插件包
-cd /Users/howsun/Warp/dify/mem0-plugin-update
+cd <your-plugin-directory>
 ./build_package.sh
 ```
 
 ### 问题 2：工具无法使用
-**原因**：本地 JSON 配置缺失或无效
+**原因**：配置缺失或无效
 **解决**：
-1. 确认已填写必填项：`local_llm_json`、`local_embedder_json`、`local_vector_db_json`
-2. 检查 JSON 结构是否为 `{ "provider": ..., "config": { ... } }`
-3. 对于 pgvector，优先提供可用的 `connection_string`
+1. 确认已选择运行模式（`async_mode`）
+2. 确认已填写必填项：`local_llm_json`、`local_embedder_json`、`local_vector_db_json`
+3. 检查 JSON 结构是否为 `{ "provider": ..., "config": { ... } }`
+4. 验证所有 API keys 和数据库连接信息是否正确
 
-### 问题 3：v2 过滤器报错
+### 问题 3：过滤器 JSON 报错
 **原因**：JSON 格式错误
 **解决**：
 - 确保 `filters` 参数是有效的 JSON 字符串
@@ -168,8 +240,7 @@ cd /Users/howsun/Warp/dify/mem0-plugin-update
 ## 🔄 更新插件
 
 ### 从旧版本升级
-
-如果你已经安装了 v0.0.2 或更早版本：
+如果你已经安装了旧版：
 
 1. **备份数据**（可选）
    - 导出现有的记忆数据
@@ -177,22 +248,29 @@ cd /Users/howsun/Warp/dify/mem0-plugin-update
 
 2. **卸载旧版本**
    - 在 Dify 插件管理中卸载旧版本
-   - 或使用 CLI：`dify plugin uninstall mem0`
+   - 或使用 CLI：`dify plugin uninstall mem0ai`
 
 3. **安装新版本**
-   - 按照上述步骤安装 v0.0.3
-   - 重新配置 API Key
+   - 按照上述步骤安装 v0.1.4
+   - 重新配置运行模式和所有 JSON 凭证
 
 4. **验证功能**
-   - 测试新增的 6 个工具
-   - 尝试 v2 高级过滤功能
-   - 验证元数据支持
+   - 测试 8 个工具
+   - 验证过滤器与 `top_k`
+   - 根据选择的模式验证操作行为
 
-### 向后兼容性
-✅ **好消息**：v0.0.3 完全向后兼容！
-- 所有 v0.0.2 的工作流继续正常运行
-- 无需修改现有配置
-- 新参数均为可选
+### 运行模式说明
+
+- **异步模式** (`async_mode=true`，默认)：
+  - 写操作（Add/Update/Delete/Delete_All）：非阻塞，立即返回 ACCEPT 状态
+  - 读操作（Search/Get/Get_All/History）：等待结果，具有超时保护（默认 30 秒）
+  - 适合生产环境，支持高并发
+
+- **同步模式** (`async_mode=false`)：
+  - 所有操作阻塞直到完成
+  - 可以立即看到每次操作的实际返回结果
+  - 适合测试和调试
+  - **注意**：同步模式没有超时保护。如果需要超时保护，请使用 `async_mode=true`
 
 ---
 
@@ -230,9 +308,15 @@ cd /Users/howsun/Warp/dify/mem0-plugin-update
    - 注意记忆存储配额
 
 3. **性能优化**
-   - 使用 limit 参数控制返回数量
+   - 使用 `top_k/limit` 控制返回数量（默认 5）
    - 合理使用过滤器减少查询范围
-   - 避免频繁的全量查询
+   - pgvector 连接池自动配置：最小连接数 10，最大连接数 40，支持高并发场景
+
+4. **可配置超时（v0.1.2+）**
+   - 所有读操作（Search/Get/Get_All/History）支持用户可配置的超时值
+   - 超时参数在 Dify 插件配置界面中作为手动输入字段提供
+   - 如果未指定，工具使用默认值（30 秒）
+   - 无效的超时值会被捕获并记录警告，回退到默认值
 
 ---
 

@@ -1,1 +1,1 @@
-"""Tools package for Dify Mem0 plugin."""
+"""Tools package for Mem0 Dify plugin."""

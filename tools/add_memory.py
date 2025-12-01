@@ -6,11 +6,18 @@ from typing import Any
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
+from utils.config_builder import is_async_mode
 from utils.constants import ADD_ACCEPT_RESULT, ADD_SKIP_RESULT
-from utils.mem0_client import AsyncLocalClient
+from utils.logger import get_logger
+from utils.mem0_client import (
+    get_async_local_client,
+    get_local_client,
+)
+
+logger = get_logger(__name__)
 
 
-class AddMem0Tool(Tool):
+class AddMemoryTool(Tool):
     """Tool to add user/assistant messages as a memory."""
 
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
@@ -18,7 +25,9 @@ class AddMem0Tool(Tool):
         user_id = tool_parameters.get("user_id")
         if not user_id:
             error_message = "user_id is required"
-            yield self.create_json_message({"status": "error", "error": error_message})
+            logger.error("Add memory failed: %s", error_message)
+            yield self.create_json_message(
+                {"status": "ERROR", "messages": error_message, "results": []})
             yield self.create_text_message(f"Failed to add memory: {error_message}")
             return
 
@@ -35,7 +44,8 @@ class AddMem0Tool(Tool):
         messages = []
         if user_text:
             messages.append({"role": "user", "content": user_text})
-        if assistant_text:
+        # Only add assistant message if it's different from user message
+        if assistant_text and assistant_text != user_text:
             messages.append({"role": "assistant", "content": assistant_text})
 
         # Build payload (only include optional fields if provided)
@@ -60,28 +70,54 @@ class AddMem0Tool(Tool):
                     for m in messages
                 )
             ):
+                logger.info("Skipping memory addition for empty messages (user_id: %s)", user_id)
                 yield self.create_json_message({
-                    "status": "skipped",
+                    "status": "SUCCESS",
                     "messages": messages,
                     **ADD_SKIP_RESULT,
                 })
                 yield self.create_text_message("Skipped memory addition for empty messages.")
                 return
 
-            client = AsyncLocalClient(self.runtime.credentials)
-            # Submit add to background event loop without awaiting (non-blocking)
-            loop = AsyncLocalClient.ensure_bg_loop()
-            asyncio.run_coroutine_threadsafe(client.add(payload), loop)
+            async_mode = is_async_mode(self.runtime.credentials)
+            mode_str = "async" if async_mode else "sync"
+            if async_mode:
+                client = get_async_local_client(self.runtime.credentials)
+                # Submit add to background event loop without awaiting (non-blocking)
+                loop = client.ensure_bg_loop()
+                asyncio.run_coroutine_threadsafe(client.add(payload), loop)
+                logger.info(
+                    "Memory addition submitted to background loop (%s, user_id: %s)",
+                    mode_str,
+                    user_id,
+                )
 
-            yield self.create_json_message({
-                "status": "queued",
-                "messages": messages,
-                **ADD_ACCEPT_RESULT,
-            })
+                yield self.create_json_message({
+                    "status": "SUCCESS",
+                    "messages": messages,
+                    **ADD_ACCEPT_RESULT,
+                })
+                yield self.create_text_message("Asynchronous memory addition has been accepted.")
+            else:
+                client = get_local_client(self.runtime.credentials)
+                result = client.add(payload)
+                logger.info(
+                    "Memory added successfully (%s, user_id: %s, result: %s)",
+                    mode_str,
+                    user_id,
+                    result,
+                )
+                yield self.create_json_message({
+                    "status": "SUCCESS",
+                    "messages": messages,
+                    "results": result,
+                })
+                yield self.create_text_message("Memory added synchronously.")
 
-            yield self.create_text_message("Asynchronous memory addition has been queued.")
-
-        except (ValueError, RuntimeError, TypeError) as e:
+        except Exception as e:
+            # Catch all exceptions to ensure workflow continues
+            logger.exception("Error adding memory for user_id: %s", user_id)
             error_message = f"Error: {e!s}"
-            yield self.create_json_message({"status": "error", "error": error_message})
+            yield self.create_json_message(
+                {"status": "ERROR", "messages": error_message, "results": []})
             yield self.create_text_message(f"Failed to add memory: {error_message}")

@@ -1,16 +1,14 @@
 identity:
-  name: delete_mem0ai_memory
+  name: delete_memory
   author: beersoccer
   label:
     en_US: Delete Memory
     zh_Hans: 删除记忆
-    pt_BR: Excluir Memória
 description:
   human:
-    en_US: Delete a specific memory by its ID
-    zh_Hans: 通过ID删除特定记忆
-    pt_BR: Excluir uma memória específica por seu ID
-  llm: Delete a specific memory by its ID
+    en_US: Delete a specific memory by its ID from Mem0
+    zh_Hans: 通过ID从 Mem0 删除特定记忆
+  llm: Use this tool to permanently delete a specific memory from Mem0 by its ID. This action cannot be undone.
 parameters:
   - name: memory_id
     type: string
@@ -18,11 +16,9 @@ parameters:
     label:
       en_US: Memory ID
       zh_Hans: 记忆ID
-      pt_BR: ID da Memória
     human_description:
       en_US: The unique identifier of the memory to delete.
       zh_Hans: 要删除的记忆的唯一标识符。
-      pt_BR: O identificador único da memória a ser excluída.
     llm_description: The unique identifier of the memory to delete.
     form: llm
 extra:

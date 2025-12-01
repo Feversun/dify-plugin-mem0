@@ -1,29 +1,25 @@
 identity:
-  name: get_all_mem0ai_memories
+  name: get_all_memories
   author: beersoccer
   label:
     en_US: Get All Memories
     zh_Hans: 获取所有记忆
-    pt_BR: Obter Todas as Memórias
 description:
   human:
     en_US: Get all memories for a specific user, agent, or run
     zh_Hans: 获取特定用户、代理或运行的所有记忆
-    pt_BR: Obter todas as memórias para um usuário, agente ou execução específica
-  llm: Get all memories for a specific user, agent, or run
+  llm: Use this tool to retrieve and list all memories from Mem0 for a specific user, with optional filtering by agent or run.
 parameters:
   - name: user_id
     type: string
-    required: false
+    required: true
     label:
       en_US: User ID
       zh_Hans: 用户ID
-      pt_BR: ID do Usuário
     human_description:
-      en_US: The unique identifier for the user. At least one of user_id, agent_id, or run_id must be provided.
-      zh_Hans: 用户的唯一标识符。必须提供 user_id、agent_id 或 run_id 中的至少一个。
-      pt_BR: O identificador único do usuário. Pelo menos um de user_id, agent_id ou run_id deve ser fornecido.
-    llm_description: The unique identifier for the user. At least one of user_id, agent_id, or run_id must be provided.
+      en_US: Required user identifier for scoping the query. Must match the user_id used when adding memories.
+      zh_Hans: 必填，用于限定查询范围的用户标识符。必须与添加记忆时使用的 user_id 一致。
+    llm_description: Required user identifier for scoping the query. Must match the user_id used when adding memories.
     form: llm
   - name: agent_id
     type: string
@@ -31,12 +27,10 @@ parameters:
     label:
       en_US: Agent ID
       zh_Hans: 代理ID
-      pt_BR: ID do Agente
     human_description:
-      en_US: The unique identifier for the agent.
-      zh_Hans: 代理的唯一标识符。
-      pt_BR: O identificador único do agente.
-    llm_description: The unique identifier for the agent.
+      en_US: Optional agent identifier. Only provide if you need to filter by a specific agent. Leave empty otherwise.
+      zh_Hans: 可选的代理标识符。仅在需要按特定代理过滤时提供。否则留空。
+    llm_description: Optional agent identifier. Only provide if filtering by a specific agent is needed. Leave empty otherwise.
     form: llm
   - name: run_id
     type: string
@@ -44,12 +38,10 @@ parameters:
     label:
       en_US: Run ID
       zh_Hans: 运行ID
-      pt_BR: ID da Execução
     human_description:
-      en_US: The unique identifier for the run.
-      zh_Hans: 运行的唯一标识符。
-      pt_BR: O identificador único da execução.
-    llm_description: The unique identifier for the run.
+      en_US: Optional run identifier. Only provide if you need to filter by a specific run. Leave empty otherwise.
+      zh_Hans: 可选的运行标识符。仅在需要按特定运行过滤时提供。否则留空。
+    llm_description: Optional run identifier. Only provide if filtering by a specific run is needed. Leave empty otherwise.
     form: llm
   - name: limit
     type: number
@@ -57,13 +49,33 @@ parameters:
     label:
       en_US: Limit
       zh_Hans: 限制数量
-      pt_BR: Limite
     human_description:
-      en_US: Maximum number of memories to return (default is 100).
-      zh_Hans: 返回的最大记忆数量（默认为 100）。
-      pt_BR: Número máximo de memórias a retornar (padrão é 100).
-    llm_description: Maximum number of memories to return (default is 100).
+      en_US: Optional maximum number of memories to return. Defaults to 100 if not specified.
+      zh_Hans: 可选，返回的最大记忆数量。未指定时默认为 100。
+    llm_description: Optional maximum number of memories to return. Defaults to 100 if not specified.
     form: llm
+  - name: filters
+    type: string
+    required: false
+    label:
+      en_US: Filters
+      zh_Hans: 过滤条件
+    human_description:
+      en_US: Optional advanced metadata filters as JSON string. Only provide if metadata filtering is needed. Leave empty otherwise.
+      zh_Hans: 可选的高级元数据过滤条件，JSON 字符串格式。仅在需要元数据过滤时提供。否则留空。
+    llm_description: Optional advanced metadata filters as JSON string. Only provide if metadata filtering is needed. Leave empty otherwise.
+    form: llm
+  - name: timeout
+    type: number
+    required: false
+    label:
+      en_US: Timeout (seconds)
+      zh_Hans: 超时时间（秒）
+    human_description:
+      en_US: Optional timeout in seconds for the get all operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+      zh_Hans: 可选，获取所有记忆操作的超时时间（秒，仅异步模式）。未指定时默认为 30 秒。仅在 async_mode=true 时生效。
+    llm_description: Optional timeout in seconds for the get all operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+    form: form
 extra:
   python:
     source: tools/get_all_memories.py

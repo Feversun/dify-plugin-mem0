@@ -1,131 +1,199 @@
-## User Guide of how to develop a Dify Plugin
+# Mem0 Dify Plugin - Configuration Guide
 
-Hi there, looks like you have already created a Plugin, now let's get you started with the development!
+This guide provides detailed configuration instructions for the Mem0 Dify Plugin.
 
-### Choose a Plugin type you want to develop
+## Installation
 
-Before start, you need some basic knowledge about the Plugin types, Plugin supports to extend the following abilities in Dify:
-- **Tool**: Tool Providers like Google Search, Stable Diffusion, etc. it can be used to perform a specific task.
-- **Model**: Model Providers like OpenAI, Anthropic, etc. you can use their models to enhance the AI capabilities.
-- **Endpoint**: Like Service API in Dify and Ingress in Kubernetes, you can extend a http service as an endpoint and control its logics using your own code.
+Follow the official Dify plugin installation guide:
+1. Go to `Settings` → `Plugins` in Dify Dashboard
+2. Install the plugin from GitHub or upload the plugin package
+3. Wait for installation to complete
 
-Based on the ability you want to extend, we have divided the Plugin into three types: **Tool**, **Model**, and **Extension**.
+## Configuration Steps
 
-- **Tool**: It's a tool provider, but not only limited to tools, you can implement an endpoint there, for example, you need both `Sending Message` and `Receiving Message` if you are building a Discord Bot, **Tool** and **Endpoint** are both required.
-- **Model**: Just a model provider, extending others is not allowed.
-- **Extension**: Other times, you may only need a simple http service to extend the functionalities, **Extension** is the right choice for you.
+### Step 1: Choose Operation Mode
 
-I believe you have chosen the right type for your Plugin while creating it, if not, you can change it later by modifying the `manifest.yaml` file.
+First, select the operation mode in plugin credentials:
 
-### Manifest
+- **Async Mode** (`async_mode=true`, default)
+  - Recommended for production environments
+  - Supports high concurrency
+  - Write operations (Add/Update/Delete/Delete_All): non-blocking, return ACCEPT status immediately
+  - Read operations (Search/Get/Get_All/History): wait for results with timeout protection (default: 30s)
 
-Now you can edit the `manifest.yaml` file to describe your Plugin, here is the basic structure of it:
+- **Sync Mode** (`async_mode=false`)
+  - Recommended for testing environments
+  - All operations block until completion
+  - You can see the actual results of each memory operation immediately
+  - **Note**: Sync mode has no timeout protection. If timeout protection is needed, use `async_mode=true`
 
-- version(version, required)：Plugin's version
-- type(type, required)：Plugin's type, currently only supports `plugin`, future support `bundle`
-- author(string, required)：Author, it's the organization name in Marketplace and should also equals to the owner of the repository
-- label(label, required)：Multi-language name
-- created_at(RFC3339, required)：Creation time, Marketplace requires that the creation time must be less than the current time
-- icon(asset, required)：Icon path
-- resource (object)：Resources to be applied
-  - memory (int64)：Maximum memory usage, mainly related to resource application on SaaS for serverless, unit bytes
-  - permission(object)：Permission application
-    - tool(object)：Reverse call tool permission
-      - enabled (bool)
-    - model(object)：Reverse call model permission
-      - enabled(bool)
-      - llm(bool)
-      - text_embedding(bool)
-      - rerank(bool)
-      - tts(bool)
-      - speech2text(bool)
-      - moderation(bool)
-    - node(object)：Reverse call node permission
-      - enabled(bool) 
-    - endpoint(object)：Allow to register endpoint permission
-      - enabled(bool)
-    - app(object)：Reverse call app permission
-      - enabled(bool)
-    - storage(object)：Apply for persistent storage permission
-      - enabled(bool)
-      - size(int64)：Maximum allowed persistent memory, unit bytes
-- plugins(object, required)：Plugin extension specific ability yaml file list, absolute path in the plugin package, if you need to extend the model, you need to define a file like openai.yaml, and fill in the path here, and the file on the path must exist, otherwise the packaging will fail.
-  - Format
-    - tools(list[string]): Extended tool suppliers, as for the detailed format, please refer to [Tool Guide](https://docs.dify.ai/docs/plugins/standard/tool_provider)
-    - models(list[string])：Extended model suppliers, as for the detailed format, please refer to [Model Guide](https://docs.dify.ai/docs/plugins/standard/model_provider)
-    - endpoints(list[string])：Extended Endpoints suppliers, as for the detailed format, please refer to [Endpoint Guide](https://docs.dify.ai/docs/plugins/standard/endpoint_group)
-  - Restrictions
-    - Not allowed to extend both tools and models
-    - Not allowed to have no extension
-    - Not allowed to extend both models and endpoints
-    - Currently only supports up to one supplier of each type of extension
-- meta(object)
-  - version(version, required)：manifest format version, initial version 0.0.1
-  - arch(list[string], required)：Supported architectures, currently only supports amd64 arm64
-  - runner(object, required)：Runtime configuration
-    - language(string)：Currently only supports python
-    - version(string)：Language version, currently only supports 3.12
-    - entrypoint(string)：Program entry, in python it should be main
+### Step 2: Configure Models and Databases
 
-### Install Dependencies
+Configure the following JSON blocks in plugin settings. Each JSON must be a map with shape: `{ "provider": <string>, "config": { ... } }`. For detailed configuration options and supported providers, refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration).
 
-- First of all, you need a Python 3.10+ environment, as our SDK requires that.
-- Then, install the dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-- If you want to add more dependencies, you can add them to the `requirements.txt` file, once you have set the runner to python in the `manifest.yaml` file, `requirements.txt` will be automatically generated and used for packaging and deployment.
+**Required:**
+- `local_llm_json` - LLM provider configuration
+- `local_embedder_json` - Embedding model configuration
+- `local_vector_db_json` - Vector database configuration
 
-### Implement the Plugin
+**Optional:**
+- `local_graph_db_json` - Graph database configuration (e.g., Neo4j)
+- `local_reranker_json` - Reranker configuration
 
-Now you can start to implement your Plugin, by following these examples, you can quickly understand how to implement your own Plugin:
+## Configuration Examples
 
-- [OpenAI](https://github.com/langgenius/dify-plugin-sdks/tree/main/python/examples/openai): best practice for model provider
-- [Google Search](https://github.com/langgenius/dify-plugin-sdks/tree/main/python/examples/google): a simple example for tool provider
-- [Neko](https://github.com/langgenius/dify-plugin-sdks/tree/main/python/examples/neko): a funny example for endpoint group
+> **📚 Reference**: For detailed configuration options and supported providers, please refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration).
 
-### Test and Debug the Plugin
+### LLM Configuration (`local_llm_json`)
 
-You may already noticed that a `.env.example` file in the root directory of your Plugin, just copy it to `.env` and fill in the corresponding values, there are some environment variables you need to set if you want to debug your Plugin locally.
-
-- `INSTALL_METHOD`: Set this to `remote`, your plugin will connect to a Dify instance through the network.
-- `REMOTE_INSTALL_HOST`: The host of your Dify instance, you can use our SaaS instance `https://debug.dify.ai`, or self-hosted Dify instance.
-- `REMOTE_INSTALL_PORT`: The port of your Dify instance, default is 5003
-- `REMOTE_INSTALL_KEY`: You should get your debugging key from the Dify instance you used, at the right top of the plugin management page, you can see a button with a `debug` icon, click it and you will get the key.
-
-Run the following command to start your Plugin:
-
-```bash
-python -m main
+```json
+{
+  "provider": "azure_openai",
+  "config": {
+    "model": "your-deployment-name",
+    "temperature": 0.1,
+    "max_tokens": 256,
+    "azure_kwargs": {
+      "azure_deployment": "your-deployment-name",
+      "api_version": "version-to-use",
+      "azure_endpoint": "your-api-base-url",
+      "api_key": "your-api-key",
+      "default_headers": {
+        "CustomHeader": "your-custom-header"
+      }
+    }
+  }
+}
 ```
 
-Refresh the page of your Dify instance, you should be able to see your Plugin in the list now, but it will be marked as `debugging`, you can use it normally, but not recommended for production.
+### Embedder Configuration (`local_embedder_json`)
 
-### Package the Plugin
-
-After all, just package your Plugin by running the following command:
-
-```bash
-dify-plugin plugin package ./ROOT_DIRECTORY_OF_YOUR_PLUGIN
+```json
+{
+  "provider": "azure_openai",
+  "config": {
+    "model": "your-deployment-name",
+    "azure_kwargs": {
+      "api_version": "version-to-use",
+      "azure_deployment": "your-deployment-name",
+      "azure_endpoint": "your-api-base-url",
+      "api_key": "your-api-key",
+      "default_headers": {
+        "CustomHeader": "your-custom-header"
+      }
+    }
+  }
+}
 ```
 
-you will get a `plugin.difypkg` file, that's all, you can submit it to the Marketplace now, look forward to your Plugin being listed!
+### Vector Store Configuration (`local_vector_db_json`)
 
+```json
+{
+  "provider": "pgvector",
+  "config": {
+    "dbname": "your-vector-db-name",
+    "user": "your-vector-db-user",
+    "password": "your-vector-db-password",
+    "host": "your-vector-db-host",
+    "port": "your-vector-db-port",
+    "sslmode": "require or disable"
+  }
+}
+```
 
-### Plugin-specific configuration (Mem0 Dify Plugin)
+### Graph Store Configuration (`local_graph_db_json`) - Optional
 
-This plugin runs in Local mode only. Provider credentials are:
+```json
+{
+  "provider": "neo4j",
+  "config": {
+    "url": "neo4j+s://<HOST>",
+    "username": "your-graph-db-user",
+    "password": "your-graph-db-password"
+  }
+}
+```
 
-- Required (JSON objects):
-  - `local_llm_json`
-  - `local_embedder_json`
-  - `local_vector_db_json` (e.g., pgvector or pinecone)
-- Optional:
-  - `local_graph_db_json` (Neo4j)
-  - `local_reranker_json`
+### Reranker Configuration (`local_reranker_json`) - Optional
 
-Each JSON must be a map with shape: `{ "provider": <string>, "config": { ... } }`.
+```json
+{
+  "provider": "cohere",
+  "config": {
+    "model": "your-model-name",
+    "api_key": "your-cohere-api-key",
+    "top_k": 5
+  }
+}
+```
 
-## User Privacy Policy
+## Runtime Behavior
 
-Please fill in the privacy policy of the plugin if you want to make it published on the Marketplace, refer to [PRIVACY.md](PRIVACY.md) for more details.
+### Async Mode (`async_mode=true`, default)
+
+- **Write Operations** (Add/Update/Delete/Delete_All):
+  - Non-blocking, return ACCEPT status immediately
+  - Operations are performed in the background
+  - Best for production environments with high traffic
+
+- **Read Operations** (Search/Get/Get_All/History):
+  - Wait for results and return actual data
+  - **Timeout protection**: All async read operations have timeout mechanisms (default: 30s, configurable)
+  - On timeout or error: logs event, cancels background tasks, returns default/empty results
+
+### Sync Mode (`async_mode=false`)
+
+- **All Operations**:
+  - Block until completion
+  - You can see the actual results of each operation immediately
+  - Best for testing and debugging
+  - **Note**: No timeout protection. If timeout protection is needed, use `async_mode=true`
+
+### Service Degradation
+
+When operations timeout or encounter errors:
+- The event is logged with full exception details
+- Background tasks are cancelled to prevent resource leaks (async mode only)
+- Default/empty results are returned (empty list `[]` for Search/Get_All/History, `None` for Get)
+- Dify workflow continues execution without interruption
+
+### Configurable Timeout (v0.1.2+)
+
+All read operations (Search/Get/Get_All/History) support user-configurable timeout values:
+- Timeout parameters are available in the Dify plugin configuration interface as manual input fields
+- If not specified, tools use default values (30 seconds for all read operations)
+- Invalid timeout values are caught and logged with a warning, defaulting to constants
+
+### Default Timeout Values
+
+- Search Memory: 30 seconds (configurable)
+- Get All Memories: 30 seconds (configurable)
+- Get Memory: 30 seconds (configurable)
+- Get Memory History: 30 seconds (configurable)
+- `MAX_REQUEST_TIMEOUT`: 60 seconds
+
+**Note**: Sync mode has no timeout protection (blocking calls). If timeout protection is needed, use `async_mode=true`
+
+## Important Operational Notes
+
+### Delete All Memories Operation
+
+> **Note**: When using the `delete_all_memories` tool to delete memories in batch, Mem0 will automatically reset the vector index to optimize performance and reclaim space. You may see a log message like `WARNING: Resetting index mem0...` during this operation. This is a **normal and expected behavior** — the warning indicates that the vector store table is being dropped and recreated to ensure optimal query performance after bulk deletion. No action is needed from your side.
+
+### PGVector Configuration
+
+- **Connection Pool**: Automatically configured with min=10, max=40 connections to align with concurrent operation limits
+- **Parameter Priority**: The plugin handles pgvector configuration according to Mem0 official documentation:
+  1. `connection_pool` (highest priority) - psycopg2 connection pool object
+  2. `connection_string` (second priority) - PostgreSQL connection string
+  3. Individual parameters (lowest priority) - user, password, host, port, dbname, sslmode
+- **Automatic Connection String Building**: If discrete parameters are provided, the plugin automatically builds a `connection_string` and removes redundant parameters
+- **Custom Pool Settings**: If `minconn` or `maxconn` are explicitly provided in pgvector config, they will be used instead of defaults
+
+## Additional Resources
+
+- **Privacy Policy**: See [PRIVACY.md](PRIVACY.md) for details about data handling in local mode
+- **Changelog**: See [CHANGELOG.md](CHANGELOG.md) for detailed version history
+- **Mem0 Official Docs**: https://docs.mem0.ai
+- **Dify Plugin Docs**: https://docs.dify.ai/docs/plugins

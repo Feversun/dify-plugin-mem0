@@ -1,14 +1,14 @@
 identity:
-  name: retrieve_mem0ai_memory
+  name: search_memory
   author: beersoccer
   label:
-    en_US: Memory Retrieval
-    zh_Hans: 记忆检索
+    en_US: Search Memory
+    zh_Hans: 搜索记忆
 description:
   human:
-    en_US: Memory retrieval node
-    zh_Hans: 记忆检索节点
-  llm: Memory retrieval node
+    en_US: Retrieve relevant memories from Mem0 using powerful semantic and filtered search capabilities
+    zh_Hans: 使用强大的语义检索和筛选功能，从 Mem0 检索相关记忆
+  llm: Use this tool to search and retrieve relevant memories from Mem0 using semantic search with optional filters.
 parameters:
   - name: query
     type: string
@@ -28,9 +28,9 @@ parameters:
       en_US: User ID
       zh_Hans: 用户ID
     human_description:
-      en_US: Required user identifier for scoping the retrieval.
-      zh_Hans: 必填，用于限定检索范围的用户标识符。
-    llm_description: Required user identifier for scoping the retrieval.
+      en_US: Required user identifier for scoping the search.
+      zh_Hans: 必填，用于限定搜索范围的用户标识符。
+    llm_description: Required user identifier for scoping the search.
     form: llm
   - name: agent_id
     type: string
@@ -39,9 +39,9 @@ parameters:
       en_US: Agent ID
       zh_Hans: 代理ID
     human_description:
-      en_US: Optional agent identifier.
-      zh_Hans: 可选的代理标识符。
-    llm_description: Optional agent identifier.
+      en_US: Optional agent identifier. Only provide if you need to filter by a specific agent. Leave empty otherwise.
+      zh_Hans: 可选的代理标识符。仅在需要按特定代理过滤时提供。否则留空。
+    llm_description: Optional agent identifier. Only provide if filtering by a specific agent is needed. Leave empty otherwise.
     form: llm
   - name: run_id
     type: string
@@ -50,9 +50,9 @@ parameters:
       en_US: Run ID
       zh_Hans: 运行ID
     human_description:
-      en_US: Optional run identifier.
-      zh_Hans: 可选的运行标识符。
-    llm_description: Optional run identifier.
+      en_US: Optional run identifier. Only provide if you need to filter by a specific run. Leave empty otherwise.
+      zh_Hans: 可选的运行标识符。仅在需要按特定运行过滤时提供。否则留空。
+    llm_description: Optional run identifier. Only provide if filtering by a specific run is needed. Leave empty otherwise.
     form: llm
   - name: filters
     type: string
@@ -61,9 +61,9 @@ parameters:
       en_US: Advanced Filters (JSON)
       zh_Hans: 高级过滤器（JSON）
     human_description:
-      en_US: 'Advanced filters in JSON with AND/OR logic. Example: {"AND": [{"user_id": "alex"}, {"OR": [{"agent_id": "agent1"}, {"agent_id": "agent2"}]}]}'
-      zh_Hans: '高级过滤器，JSON 格式，支持 AND/OR 逻辑。例如：{"AND": [{"user_id": "alex"}, {"OR": [{"agent_id": "agent1"}, {"agent_id": "agent2"}]}]}'
-    llm_description: Advanced filters in JSON with AND/OR logic.
+      en_US: Optional advanced filters in JSON with AND/OR logic. Only provide if complex filtering is needed. Leave empty otherwise.
+      zh_Hans: 可选的高级过滤器，JSON 格式，支持 AND/OR 逻辑。仅在需要复杂过滤时提供。否则留空。
+    llm_description: Optional advanced filters in JSON with AND/OR logic. Only provide if complex filtering is needed. Leave empty otherwise.
     form: llm
   - name: top_k
     type: number
@@ -73,10 +73,21 @@ parameters:
       en_US: Top K
       zh_Hans: Top K
     human_description:
-      en_US: 'Optional maximum number of results to return (default: 5).'
-      zh_Hans: 可选，返回的最大结果数量（默认：5）。
-    llm_description: 'Optional maximum number of results to return (default: 5).'
+      en_US: Optional maximum number of results to return. Defaults to 5 if not specified.
+      zh_Hans: 可选，返回的最大结果数量。未指定时默认为 5。
+    llm_description: Optional maximum number of results to return. Defaults to 5 if not specified.
     form: llm
+  - name: timeout
+    type: number
+    required: false
+    label:
+      en_US: Timeout (seconds)
+      zh_Hans: 超时时间（秒）
+    human_description:
+      en_US: Optional timeout in seconds for the search operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+      zh_Hans: 可选，搜索操作的超时时间（秒，仅异步模式）。未指定时默认为 30 秒。仅在 async_mode=true 时生效。
+    llm_description: Optional timeout in seconds for the search operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+    form: form
 extra:
   python:
     source: tools/search_memory.py

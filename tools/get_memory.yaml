@@ -1,16 +1,14 @@
 identity:
-  name: get_mem0ai_memory
+  name: get_memory
   author: beersoccer
   label:
     en_US: Get Memory
     zh_Hans: 获取记忆
-    pt_BR: Obter Memória
 description:
   human:
     en_US: Get a specific memory by its ID
     zh_Hans: 通过ID获取特定记忆
-    pt_BR: Obter uma memória específica por seu ID
-  llm: Get a specific memory by its ID
+  llm: Use this tool to retrieve and display the full details of a specific memory from Mem0 by its ID.
 parameters:
   - name: memory_id
     type: string
@@ -18,13 +16,22 @@ parameters:
     label:
       en_US: Memory ID
       zh_Hans: 记忆ID
-      pt_BR: ID da Memória
     human_description:
       en_US: The unique identifier of the memory to retrieve.
       zh_Hans: 要检索的记忆的唯一标识符。
-      pt_BR: O identificador único da memória a ser recuperada.
     llm_description: The unique identifier of the memory to retrieve.
     form: llm
+  - name: timeout
+    type: number
+    required: false
+    label:
+      en_US: Timeout (seconds)
+      zh_Hans: 超时时间（秒）
+    human_description:
+      en_US: Optional timeout in seconds for the get operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+      zh_Hans: 可选，获取记忆操作的超时时间（秒，仅异步模式）。未指定时默认为 30 秒。仅在 async_mode=true 时生效。
+    llm_description: Optional timeout in seconds for the get operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+    form: form
 extra:
   python:
     source: tools/get_memory.py
