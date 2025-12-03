@@ -1,5 +1,68 @@
 # Mem0 Dify Plugin - Changelog
 
+## Version 0.1.5 (2025-01-30)
+
+### 🎯 Search Memory Timestamp Support & Code Refactoring
+
+This release adds timestamp support to search results and refactors common utility functions into a centralized helpers module for better code maintainability.
+
+#### Highlights
+- **Search Memory Timestamp Support**: Added `timestamp` field to search results
+  - Displays the most recent timestamp from `created_at` or `updated_at` fields
+  - Format: `2025-11-03T20:06:27` (second precision, no milliseconds or timezone)
+  - Only included in results when at least one timestamp is available
+  - Logic: If both `created_at` and `updated_at` exist, returns the more recent one; if only one exists, returns that one; if both are empty, `timestamp` field is not included
+- **Code Refactoring**: Created `utils/helpers.py` to centralize common utility functions
+  - Abstracted `parse_timeout()` function for unified timeout parameter parsing
+  - Abstracted `format_recent_timestamp()` and `parse_iso_timestamp()` for timestamp handling
+  - Renamed `utils/timestamp.py` to `utils/helpers.py` for better naming (supports future utility functions)
+- **Code Quality Improvements**:
+  - Removed unused class imports (`LocalClient`, `AsyncLocalClient`) from all tool files
+  - Changed `AsyncLocalClient.ensure_bg_loop()` to instance method call `client.ensure_bg_loop()`
+  - Updated comments to remove direct references to `AsyncLocalClient.shutdown()`
+  - Fixed indentation errors in multiple tool files (`add_memory.py`, `update_memory.py`, `delete_memory.py`, `delete_all_memories.py`)
+
+#### 🔧 Technical Details
+- **Timestamp Formatting**:
+  - `format_recent_timestamp()` compares `created_at` and `updated_at` timestamps
+  - Returns the most recent timestamp in `YYYY-MM-DDTHH:MM:SS` format
+  - Handles ISO8601 timestamp parsing with timezone support
+  - Converts timestamps to local timezone before formatting
+- **Helper Functions**:
+  - `parse_timeout()`: Unified timeout parsing with default value fallback and logging
+  - `parse_iso_timestamp()`: Robust ISO8601 timestamp parsing with timezone handling
+  - `format_recent_timestamp()`: Timestamp comparison and formatting logic
+- **Import Optimization**:
+  - Tool files now only import factory functions (`get_local_client`, `get_async_local_client`)
+  - Removed direct class imports that were not used
+  - Cleaner import statements and better code organization
+
+#### 📝 Files Changed
+- **New Files**:
+  - `utils/helpers.py` - Common utility functions module
+- **Modified Files**:
+  - `tools/search_memory.py` - Added timestamp formatting, uses `parse_timeout()` and `format_recent_timestamp()`
+  - `tools/get_all_memories.py` - Uses `parse_timeout()`
+  - `tools/get_memory.py` - Uses `parse_timeout()`
+  - `tools/get_memory_history.py` - Uses `parse_timeout()`
+  - `tools/add_memory.py` - Fixed indentation errors
+  - `tools/update_memory.py` - Fixed indentation errors
+  - `tools/delete_memory.py` - Fixed indentation errors
+  - `tools/delete_all_memories.py` - Fixed indentation errors
+- **Removed Files**:
+  - `utils/timestamp.py` - Renamed to `utils/helpers.py`
+
+#### ⚠️ Migration Notes
+- No breaking changes in API or behavior
+- Search results now include `timestamp` field when available (backward compatible)
+- All existing functionality remains unchanged
+- Code refactoring is internal only, no user-facing changes
+
+#### 🐛 Bug Fixes
+- Fixed indentation errors in `add_memory.py`, `update_memory.py`, `delete_memory.py`, and `delete_all_memories.py` that caused syntax errors
+
+---
+
 ## Version 0.1.4 (2025-11-23)
 
 ### 🔍 Logging Investigation & Documentation Update

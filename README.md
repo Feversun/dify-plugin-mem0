@@ -1,4 +1,4 @@
-# Mem0 Dify Plugin v0.1.4
+# Mem0 Dify Plugin v0.1.5
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dify Plugin](https://img.shields.io/badge/Dify-Plugin-blue)](https://dify.ai)
@@ -12,7 +12,7 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 
 ### Complete Memory Management (8 Tools)
 - ✅ **Add Memory** - Intelligently add, update, or delete memories based on user interactions
-- ✅ **Search Memory** - Search with advanced filters (AND/OR logic) and top_k limiting
+- ✅ **Search Memory** - Search with advanced filters (AND/OR logic) and top_k limiting, returns timestamp field (most recent created_at/updated_at)
 - ✅ **Get All Memories** - List memories with pagination
 - ✅ **Get Memory** - Fetch specific memory details
 - ✅ **Update Memory** - Modify existing memories
@@ -29,7 +29,17 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 - 🌍 **Internationalized** - 4 languages (en/zh/pt/ja)
 - ⚙️ **Async Mode Switch** - `async_mode` is enabled by default; Write ops (Add/Update/Delete) are non-blocking in async mode, Read ops (Search/Get) always wait; in sync mode all operations block until completion.
 
-### What's New (v0.1.4)
+### What's New (v0.1.5)
+- **Search Memory Timestamp Support**: Added timestamp field to search results, displaying the most recent timestamp (created_at or updated_at) in second precision format (`2025-11-03T20:06:27`)
+- **Code Refactoring**: Created `utils/helpers.py` to centralize common utility functions
+  - Abstracted `parse_timeout()` function for unified timeout parameter parsing across all read operations
+  - Abstracted `format_recent_timestamp()` and `parse_iso_timestamp()` for timestamp handling
+- **Code Quality Improvements**: 
+  - Removed unused class imports (`LocalClient`, `AsyncLocalClient`) from tool files
+  - Changed `AsyncLocalClient.ensure_bg_loop()` to instance method call `client.ensure_bg_loop()`
+  - Fixed indentation errors in multiple tool files
+
+### Previous Updates (v0.1.4)
 - **Logging Investigation**: Documented logging output behavior and investigated potential improvements. Identified that logs may appear twice (JSON format from Dify handler + standard format from Python root logger) and that JSON format uses Unicode encoding for non-ASCII characters.
 
 ### Previous Updates (v0.1.3)
@@ -167,7 +177,7 @@ Once configured, all 8 tools are available in your workflows!
 | Tool | Description |
 |------|-------------|
 | `add_memory` | Add new memories (user_id required) |
-| `search_memory` | Search with filters and top_k |
+| `search_memory` | Search with filters and top_k, returns timestamp field |
 | `get_all_memories` | List all memories |
 | `get_memory` | Get specific memory |
 | `update_memory` | Update memory content |
@@ -390,6 +400,7 @@ done
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.1.5 | 2025-01-30 | Search memory timestamp support, code refactoring with helpers module |
 | v0.1.4 | 2025-11-23 | Logging investigation and documentation update |
 | v0.1.3 | 2025-11-22 | Unified logging configuration, database connection pool optimization, pgvector config enhancement, constant naming optimization |
 | v0.1.2 | 2025-11-21 | Configurable timeout parameters, optimized default timeouts (30s for all read ops), code quality improvements |

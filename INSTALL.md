@@ -1,4 +1,4 @@
-# Mem0 Dify Plugin v0.1.4 - 安装指南
+# Mem0 Dify Plugin v0.1.5 - 安装指南
 
 ## 📦 安装步骤
 
@@ -17,7 +17,7 @@
 3. **安装插件**
    - 点击 **"Install from GitHub"** 或 **"上传插件"** 按钮
    - 如果从 GitHub 安装：输入仓库 URL
-   - 如果从包安装：选择 `mem0ai-0.1.4.difypkg` 文件
+   - 如果从包安装：选择 `mem0ai-0.1.5.difypkg` 文件
    - 等待上传和安装完成
 
 ### 2. 配置插件
@@ -251,7 +251,7 @@ cd <your-plugin-directory>
    - 或使用 CLI：`dify plugin uninstall mem0ai`
 
 3. **安装新版本**
-   - 按照上述步骤安装 v0.1.4
+   - 按照上述步骤安装 v0.1.5
    - 重新配置运行模式和所有 JSON 凭证
 
 4. **验证功能**

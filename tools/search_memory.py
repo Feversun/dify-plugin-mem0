@@ -10,6 +10,7 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from utils.config_builder import is_async_mode
 from utils.constants import SEARCH_DEFAULT_TOP_K, SEARCH_OPERATION_TIMEOUT
+from utils.helpers import format_recent_timestamp, parse_timeout
 from utils.logger import get_logger
 from utils.mem0_client import (
     get_async_local_client,
@@ -81,20 +82,12 @@ class SearchMemoryTool(Tool):
         try:
             async_mode = is_async_mode(self.runtime.credentials)
             mode_str = "async" if async_mode else "sync"
-            # Get timeout from parameters, use default if not provided
-            timeout = tool_parameters.get("timeout")
-            if timeout is None:
-                timeout = SEARCH_OPERATION_TIMEOUT
-            else:
-                try:
-                    timeout = float(timeout)
-                except (TypeError, ValueError):
-                    logger.warning(
-                        "Invalid timeout value: %s, using default: %d",
-                        timeout,
-                        SEARCH_OPERATION_TIMEOUT,
-                    )
-                    timeout = SEARCH_OPERATION_TIMEOUT
+            timeout = parse_timeout(
+                tool_parameters.get("timeout"),
+                SEARCH_OPERATION_TIMEOUT,
+                logger,
+                "search",
+            )
             # Initialize results with default value to ensure it's always defined
             results: list[dict[str, Any]] = []
             if async_mode:
@@ -155,15 +148,19 @@ class SearchMemoryTool(Tool):
             for r in results or []:
                 if not isinstance(r, dict):
                     continue
-                norm_results.append(
-                    {
-                        "id": r.get("id"),
-                        "memory": r.get("memory"),
-                        "score": r.get("score", 0.0),
-                        "metadata": r.get("metadata", {}),
-                        "created_at": r.get("created_at", ""),
-                    },
+                timestamp = format_recent_timestamp(
+                    r.get("created_at"),
+                    r.get("updated_at"),
                 )
+                entry = {
+                    "id": r.get("id"),
+                    "memory": r.get("memory"),
+                    "score": r.get("score", 0.0),
+                    "metadata": r.get("metadata", {}),
+                }
+                if timestamp:
+                    entry["timestamp"] = timestamp
+                norm_results.append(entry)
 
             # Log search results
             logger.info(
@@ -193,6 +190,9 @@ class SearchMemoryTool(Tool):
                     md = r.get("metadata")
                     if md:
                         lines.append(f"   Metadata: {md}")
+                    ts_value = r.get("timestamp")
+                    if ts_value:
+                        lines.append(f"   Timestamp: {ts_value}")
             else:
                 lines.append("")
                 lines.append("No results found.")
