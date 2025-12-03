@@ -9,6 +9,7 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from utils.config_builder import is_async_mode
 from utils.constants import GET_OPERATION_TIMEOUT
+from utils.helpers import parse_timeout
 from utils.logger import get_logger
 from utils.mem0_client import (
     get_async_local_client,
@@ -27,20 +28,12 @@ class GetMemoryTool(Tool):
         try:
             async_mode = is_async_mode(self.runtime.credentials)
             mode_str = "async" if async_mode else "sync"
-            # Get timeout from parameters, use default if not provided
-            timeout = tool_parameters.get("timeout")
-            if timeout is None:
-                timeout = GET_OPERATION_TIMEOUT
-            else:
-                try:
-                    timeout = float(timeout)
-                except (TypeError, ValueError):
-                    logger.warning(
-                        "Invalid timeout value: %s, using default: %d",
-                        timeout,
-                        GET_OPERATION_TIMEOUT,
-                    )
-                    timeout = GET_OPERATION_TIMEOUT
+            timeout = parse_timeout(
+                tool_parameters.get("timeout"),
+                GET_OPERATION_TIMEOUT,
+                logger,
+                "get",
+            )
             # Initialize result with default value to ensure it's always defined
             result: dict[str, Any] | None = None
             if async_mode:
