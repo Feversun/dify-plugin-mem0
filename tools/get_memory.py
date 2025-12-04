@@ -24,7 +24,7 @@ class GetMemoryTool(Tool):
 
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         memory_id = tool_parameters["memory_id"]
-
+        
         try:
             async_mode = is_async_mode(self.runtime.credentials)
             mode_str = "async" if async_mode else "sync"
@@ -73,7 +73,7 @@ class GetMemoryTool(Tool):
                 # If timeout protection is needed, use async_mode=true
                 client = get_local_client(self.runtime.credentials)
                 try:
-                    result = client.get(memory_id)
+            result = client.get(memory_id)
                 except Exception as e:
                     # Catch all exceptions for sync mode to ensure service degradation
                     logger.exception(
@@ -99,7 +99,7 @@ class GetMemoryTool(Tool):
                 memory_id,
                 result,
             )
-
+            
             yield self.create_json_message({
                 "status": "SUCCESS",
                 "messages": {"memory_id": memory_id},
@@ -111,7 +111,7 @@ class GetMemoryTool(Tool):
                     "updated_at": result.get("updated_at", ""),
                 },
             })
-
+            
             text_response = (
                 f"Memory Details:\n\n"
                 f"ID: {result.get('id', '')}\n"
@@ -120,9 +120,9 @@ class GetMemoryTool(Tool):
                 f"Created: {result.get('created_at', '')}\n"
                 f"Updated: {result.get('updated_at', '')}\n"
             )
-
+            
             yield self.create_text_message(text_response)
-
+            
         except Exception as e:
             # Catch all exceptions to ensure workflow continues
             logger.exception("Error getting memory %s", memory_id)
