@@ -25,6 +25,46 @@ from .logger import get_logger
 logger = get_logger(__name__)
 
 
+def get_int_credential(
+    credentials: dict[str, Any],
+    key: str,
+    default: int,
+) -> int:
+    """Read an integer credential with a safe fallback.
+
+    Args:
+        credentials: Provider credentials dictionary.
+        key: Credential field name.
+        default: Default value to use when the field is missing or invalid.
+
+    Returns:
+        Parsed integer value or the default if parsing fails.
+
+    """
+    raw = credentials.get(key)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid integer value for %s: %s, using default: %d",
+            key,
+            raw,
+            default,
+        )
+        return default
+    if value <= 0:
+        logger.warning(
+            "Non-positive value for %s: %s, using default: %d",
+            key,
+            raw,
+            default,
+        )
+        return default
+    return value
+
+
 def _raise_config_error(msg: str) -> None:
     """Raise a ValueError for configuration errors with logging.
 
@@ -84,7 +124,11 @@ def _parse_json_block(raw: str | dict[str, Any] | None, field_name: str) -> dict
     return data
 
 
-def _normalize_pgvector_config(config: dict[str, Any]) -> dict[str, Any]:
+def _normalize_pgvector_config(
+    config: dict[str, Any],
+    min_connections: int,
+    max_connections: int,
+) -> dict[str, Any]:
     """Normalize pgvector config according to Mem0 official documentation.
 
     Supports three connection methods (in priority order):
@@ -187,18 +231,19 @@ def _normalize_pgvector_config(config: dict[str, Any]) -> dict[str, Any]:
         # Keep dbname as it may be used for some operations
 
     # Set connection pool settings if not already provided
-    # Use default constants to ensure sufficient connections for concurrent operations
+    # Use provided values (typically from credentials, falling back to constants)
+    # to ensure sufficient connections for concurrent operations.
     if "minconn" not in normalized or normalized.get("minconn") is None:
-        normalized["minconn"] = PGVECTOR_MIN_CONNECTIONS
+        normalized["minconn"] = min_connections
         logger.debug(
-            "Setting pgvector minconn to default: %d",
-            PGVECTOR_MIN_CONNECTIONS,
+            "Setting pgvector minconn to: %d",
+            min_connections,
         )
     if "maxconn" not in normalized or normalized.get("maxconn") is None:
-        normalized["maxconn"] = PGVECTOR_MAX_CONNECTIONS
+        normalized["maxconn"] = max_connections
         logger.debug(
-            "Setting pgvector maxconn to default: %d",
-            PGVECTOR_MAX_CONNECTIONS,
+            "Setting pgvector maxconn to: %d",
+            max_connections,
         )
 
     return normalized
@@ -234,6 +279,20 @@ def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
             return _built_config_cache[cache_key]
 
         logger.info("Building Mem0 local configuration from credentials")
+
+        # Read optional pgvector pool settings from credentials, with safe defaults.
+        # If users do not configure these fields, PGVECTOR_MIN_CONNECTIONS /
+        # PGVECTOR_MAX_CONNECTIONS from utils/constants.py are used.
+        pg_min_connections = get_int_credential(
+            credentials,
+            "pgvector_min_connections",
+            PGVECTOR_MIN_CONNECTIONS,
+        )
+        pg_max_connections = get_int_credential(
+            credentials,
+            "pgvector_max_connections",
+            PGVECTOR_MAX_CONNECTIONS,
+        )
         llm = _parse_json_block(credentials.get("local_llm_json"), "local_llm_json")
         embedder = _parse_json_block(credentials.get("local_embedder_json"), "local_embedder_json")
         vector_store = _parse_json_block(
@@ -258,6 +317,8 @@ def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
             logger.debug("Normalizing pgvector configuration")
             vector_store["config"] = _normalize_pgvector_config(
                 vector_store["config"],
+                pg_min_connections,
+                pg_max_connections,
             )  # type: ignore[index]
 
         reranker = _parse_json_block(

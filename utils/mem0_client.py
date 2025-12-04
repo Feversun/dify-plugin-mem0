@@ -11,7 +11,7 @@ from typing import Any
 
 from mem0 import AsyncMemory, Memory
 
-from .config_builder import build_local_mem0_config
+from .config_builder import build_local_mem0_config, get_int_credential
 from .constants import ADD_SKIP_RESULT, CUSTOM_PROMPT, MAX_CONCURRENT_MEMORY_OPERATIONS
 from .logger import get_logger
 
@@ -373,8 +373,16 @@ class AsyncLocalClient:
         self.memory = None
         # Async lock to protect one-time asynchronous initialization.
         self._create_lock = asyncio.Lock()
-        # Semaphore to limit the concurrency of memory operations
-        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_MEMORY_OPERATIONS)
+        # Semaphore to limit the concurrency of memory operations. Users can
+        # optionally override the default via provider credentials;
+        # if not set or invalid, MAX_CONCURRENT_MEMORY_OPERATIONS from
+        # utils/constants.py is used.
+        max_ops = get_int_credential(
+            credentials,
+            "max_concurrent_memory_operations",
+            MAX_CONCURRENT_MEMORY_OPERATIONS,
+        )
+        self._semaphore = asyncio.Semaphore(max_ops)
         # Toggle whether to use custom prompt
         self.use_custom_prompt = True
         self.custom_prompt = CUSTOM_PROMPT
@@ -803,10 +811,10 @@ class AsyncLocalClient:
         try:
             async with self._semaphore:
                 result = await self.memory.delete_all(
-                    user_id=params.get("user_id"),
-                    agent_id=params.get("agent_id"),
-                    run_id=params.get("run_id"),
-                )
+                user_id=params.get("user_id"),
+                agent_id=params.get("agent_id"),
+                run_id=params.get("run_id"),
+            )
         except Exception:
             logger.exception("Error during async delete_all operation")
             raise

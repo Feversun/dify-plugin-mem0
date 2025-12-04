@@ -1,4 +1,4 @@
-# Mem0 Dify Plugin v0.1.5
+# Mem0 Dify Plugin v0.1.6
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dify Plugin](https://img.shields.io/badge/Dify-Plugin-blue)](https://dify.ai)
@@ -29,7 +29,15 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 - 🌍 **Internationalized** - 4 languages (en/zh/pt/ja)
 - ⚙️ **Async Mode Switch** - `async_mode` is enabled by default; Write ops (Add/Update/Delete) are non-blocking in async mode, Read ops (Search/Get) always wait; in sync mode all operations block until completion.
 
-### What's New (v0.1.5)
+### What's New (v0.1.6)
+- **Security Enhancement**: All sensitive configuration fields now use `secret-input` type to protect API keys and credentials in the Dify UI
+  - All JSON configuration fields (`local_llm_json`, `local_embedder_json`, `local_vector_db_json`, `local_graph_db_json`, `local_reranker_json`) are now hidden in the UI
+- **User-Configurable Performance Parameters**: Added three new optional configuration parameters for production environments
+  - `max_concurrent_memory_operations` - Control maximum concurrent async operations (default: 40, recommended > 20 for production)
+  - `pgvector_min_connections` - Set PGVector connection pool minimum size (default: 10)
+  - `pgvector_max_connections` - Set PGVector connection pool maximum size (default: 40, recommended to match max_concurrent_memory_operations)
+
+### Previous Updates (v0.1.5)
 - **Search Memory Timestamp Support**: Added timestamp field to search results, displaying the most recent timestamp (created_at or updated_at) in second precision format (`2025-11-03T20:06:27`)
 - **Code Refactoring**: Created `utils/helpers.py` to centralize common utility functions
   - Abstracted `parse_timeout()` function for unified timeout parameter parsing across all read operations
@@ -71,7 +79,8 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 
 ### Installation
 
-Follow the official Dify plugin installation guide:
+> 📖 **For detailed installation steps, see [CONFIG.md - Installation](CONFIG.md#installation)**
+
 1. **In Dify Dashboard**
    - Go to `Settings` → `Plugins`
    - Click `Install from GitHub` or upload the plugin package
@@ -80,40 +89,16 @@ Follow the official Dify plugin installation guide:
 
 ### Configuration
 
-After installation, configure the plugin in the following order:
+> 📖 **For detailed configuration steps and examples, see [CONFIG.md - Configuration Steps](CONFIG.md#configuration-steps)**
 
-#### Step 1: Choose Operation Mode
+After installation, you need to configure:
 
-First, select the operation mode:
+1. **Operation Mode**: Choose between async (default, recommended for production) or sync mode (for testing)
+2. **Required JSON Configs**: `local_llm_json`, `local_embedder_json`, `local_vector_db_json`
+3. **Optional Configs**: `local_graph_db_json`, `local_reranker_json`
+4. **Performance Parameters** (optional): `max_concurrent_memory_operations`, `pgvector_min_connections`, `pgvector_max_connections`
 
-- **Async Mode** (Recommended for Production)
-  - Set `async_mode` to `true`
-  - Supports high concurrency
-  - Write operations (Add/Update/Delete) are non-blocking and return immediately
-  - Read operations (Search/Get) wait for results with timeout protection
-  - Best for production environments with high traffic
-
-- **Sync Mode** (Recommended for Testing)
-  - Set `async_mode` to `false`
-  - All operations block until completion
-  - You can see the actual results of each memory operation immediately
-  - Best for testing and debugging
-  - **Note**: Sync mode has no timeout protection. If timeout protection is needed, use `async_mode=true`
-
-#### Step 2: Configure Models and Databases
-
-Configure the following JSON blocks in plugin settings. For detailed configuration options and supported providers, refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration).
-
-**Required:**
-- `local_llm_json` - LLM provider configuration
-- `local_embedder_json` - Embedding model configuration
-- `local_vector_db_json` - Vector database configuration
-
-**Optional:**
-- `local_graph_db_json` - Graph database configuration (e.g., Neo4j)
-- `local_reranker_json` - Reranker configuration
-
-See the [Configuration Examples](#-configuration-examples) section below for basic JSON examples.
+**Note**: All JSON configuration fields are displayed as password fields (hidden input) in the Dify UI to protect sensitive information.
 
 ### Start Using
 
@@ -123,9 +108,11 @@ Once configured, all 8 tools are available in your workflows!
 
 ## 📖 Usage Examples
 
-### Basic Usage
+> 📖 **For complete usage examples with all 8 tools, see [CONFIG.md - Usage Examples](CONFIG.md#usage-examples)**
 
-#### Add a Memory (user_id required)
+### Quick Examples
+
+**Add Memory:**
 ```json
 {
   "user": "I love Italian food",
@@ -134,7 +121,7 @@ Once configured, all 8 tools are available in your workflows!
 }
 ```
 
-#### Search Memories
+**Search Memories:**
 ```json
 {
   "query": "What food does alex like?",
@@ -143,32 +130,10 @@ Once configured, all 8 tools are available in your workflows!
 }
 ```
 
-### Add Memory with Metadata
-```json
-{
-  "user": "I prefer morning meetings",
-  "assistant": "Noted!",
-  "user_id": "alex",
-  "agent_id": "scheduler",
-  "metadata": "{\"type\": \"preference\", \"priority\": \"high\"}"
-}
-```
-
-### Search with Filters (local mode)
-```json
-{
-  "query": "user preferences",
-  "filters": "{\"AND\": [{\"user_id\": \"alex\"}, {\"agent_id\": \"scheduler\"}]}"
-}
-```
-
-#### Get All Memories for an Agent
-```json
-{
-  "agent_id": "travel_assistant",
-  "limit": 50
-}
-```
+**Key Points:**
+- `user_id` is **required** for `add_memory`, `search_memory`, and `get_all_memories`
+- `filters` and `metadata` must be valid JSON strings when provided
+- `top_k` defaults to 5 if not specified for `search_memory`
 
 ---
 
@@ -189,10 +154,11 @@ Once configured, all 8 tools are available in your workflows!
 
 ## 📚 Documentation
 
-- **[CHANGELOG.md](CHANGELOG.md)** - Detailed changelog and examples
-- **[INSTALL.md](INSTALL.md)** - Installation guide
-- **[BUGFIX.md](BUGFIX.md)** - Known issues and fixes
+- **[CONFIG.md](CONFIG.md)** - Complete installation and configuration guide
+- **[CHANGELOG.md](CHANGELOG.md)** - Detailed changelog and version history
+- **[PRIVACY.md](PRIVACY.md)** - Privacy policy and data handling
 - **[Mem0 Official Docs](https://docs.mem0.ai)** - Full API documentation
+- **[Dify Plugin Docs](https://docs.dify.ai/docs/plugins)** - Dify plugin development guide
 
 ---
 
@@ -232,136 +198,16 @@ search(
 
 ---
 
-## 🔧 Configuration Examples
-
-> **📚 Reference**: For detailed configuration options and supported providers, please refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration).
-
-### Operation Mode
-
-Set `async_mode` in plugin credentials:
-- `true` (default) - Async mode, recommended for production
-- `false` - Sync mode, recommended for testing
-
-### LLM Configuration (`local_llm_json`)
-
-```json
-{
-  "provider": "azure_openai",
-  "config": {
-    "model": "your-deployment-name",
-    "temperature": 0.1,
-    "max_tokens": 256,
-    "azure_kwargs": {
-      "azure_deployment": "your-deployment-name",
-      "api_version": "version-to-use",
-      "azure_endpoint": "your-api-base-url",
-      "api_key": "your-api-key",
-      "default_headers": {
-        "CustomHeader": "your-custom-header"
-      }
-    }
-  }
-}
-```
-
-### Embedder Configuration (`local_embedder_json`)
-
-```json
-{
-  "provider": "azure_openai",
-  "config": {
-    "model": "your-deployment-name",
-    "azure_kwargs": {
-      "api_version": "version-to-use",
-      "azure_deployment": "your-deployment-name",
-      "azure_endpoint": "your-api-base-url",
-      "api_key": "your-api-key",
-      "default_headers": {
-        "CustomHeader": "your-custom-header"
-      }
-    }
-  }
-}
-```
-
-### Vector Store Configuration (`local_vector_db_json`)
-
-```json
-{
-  "provider": "pgvector",
-  "config": {
-    "dbname": "your-vector-db-name",
-    "user": "your-vector-db-user",
-    "password": "your-vector-db-password",
-    "host": "your-vector-db-host",
-    "port": "your-vector-db-port",
-    "sslmode": "require or disable"
-  }
-}
-```
-
-### Graph Store Configuration (`local_graph_db_json`) - Optional
-
-```json
-{
-  "provider": "neo4j",
-  "config": {
-    "url": "neo4j+s://<HOST>",
-    "username": "your-graph-db-user",
-    "password": "your-graph-db-password"
-  }
-}
-```
-
-### Reranker Configuration (`local_reranker_json`) - Optional
-
-```json
-{
-  "provider": "cohere",
-  "config": {
-    "model": "your-model-name",
-    "api_key": "your-cohere-api-key",
-    "top_k": 5
-  }
-}
-```
-
-### Configurable Timeout (v0.1.2+)
-
-All read operations (Search/Get/Get_All/History) support user-configurable timeout values:
-- Timeout parameters are available in the Dify plugin configuration interface as manual input fields
-- If not specified, tools use default values (30 seconds for all read operations)
-- Allows customization per tool based on specific use case requirements
-
----
-
 ## 📌 Important Notes
 
-### Delete All Memories Operation
+> 📖 **For detailed operational notes, runtime behavior, and troubleshooting, see [CONFIG.md](CONFIG.md)**
 
-> **Note**: When using the `delete_all_memories` tool to delete memories in batch, Mem0 will automatically reset the vector index to optimize performance and reclaim space. You may see a log message like `WARNING: Resetting index mem0...` during this operation. This is a **normal and expected behavior** — the warning indicates that the vector store table is being dropped and recreated to ensure optimal query performance after bulk deletion. No action is needed from your side.
+### Quick Reference
 
-### Operation Mode Behavior
-
-- **Async Mode** (`async_mode=true`, default):
-  - Write operations (Add/Update/Delete/Delete_All): Non-blocking, return ACCEPT status immediately
-  - Read operations (Search/Get/Get_All/History): Wait for results with timeout protection (default: 30s, configurable)
-  - On timeout or error: Logs event, cancels background tasks, returns default/empty results
-  - Best for production environments with high traffic
-
-- **Sync Mode** (`async_mode=false`):
-  - All operations block until completion
-  - You can see the actual results of each operation immediately
-  - Best for testing and debugging
-  - **Note**: No timeout protection. If timeout protection is needed, use `async_mode=true`
-
-### Service Degradation
-
-When operations timeout or encounter errors:
-- The event is logged with full exception details
-- Background tasks are cancelled to prevent resource leaks (async mode only)
-- Default/empty results are returned (empty list `[]` for Search/Get_All/History, `None` for Get)
-- Dify workflow continues execution without interruption
+- **Delete All Memories**: Automatically resets vector index (normal behavior)
+- **Async Mode** (default): Non-blocking writes, timeout-protected reads
+- **Sync Mode**: All operations block until completion (no timeout protection)
+- **Service Degradation**: Graceful error handling with default/empty results
 
 ---
 
@@ -400,6 +246,7 @@ done
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.1.6 | 2025-01-30 | Security enhancement (secret-input for all configs), user-configurable performance parameters |
 | v0.1.5 | 2025-01-30 | Search memory timestamp support, code refactoring with helpers module |
 | v0.1.4 | 2025-11-23 | Logging investigation and documentation update |
 | v0.1.3 | 2025-11-22 | Unified logging configuration, database connection pool optimization, pgvector config enhancement, constant naming optimization |

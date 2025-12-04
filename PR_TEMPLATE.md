@@ -100,8 +100,7 @@ Please confirm that your plugin README includes all necessary information:
 **Documentation Details:**
 
 - **README.md**: Includes comprehensive installation guide, configuration examples, usage examples, and links to Mem0 official documentation
-- **INSTALL.md**: Detailed installation and configuration guide in Chinese
-- **GUIDE.md**: Configuration guide with detailed examples
+- **CONFIG.md**: Complete installation and configuration guide
 - **PRIVACY.md**: Complete privacy policy explaining local mode operation
 - **CHANGELOG.md**: Detailed version history and changes
 

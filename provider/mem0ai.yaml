@@ -22,7 +22,7 @@ credentials_for_provider:
       en_US: "When async mode is enabled, all Mem0 operations run asynchronously and concurrently. Search waits for results; Add does not."
       zh_Hans: "开启异步模式后，所有Mem0的操作都异步并发执行，Search操作会等待返回结果而Add操作不会。"
   local_llm_json:
-    type: text-input
+    type: secret-input
     required: true
     label:
       en_US: LLM (JSON)
@@ -31,7 +31,7 @@ credentials_for_provider:
       en_US: '{"provider":"azure_openai","config":{...}}'
       zh_Hans: '{"provider":"azure_openai","config":{...}}'
   local_embedder_json:
-    type: text-input
+    type: secret-input
     required: true
     label:
       en_US: Embedder (JSON)
@@ -40,7 +40,7 @@ credentials_for_provider:
       en_US: '{"provider":"azure_openai","config":{...}}'
       zh_Hans: '{"provider":"azure_openai","config":{...}}'
   local_vector_db_json:
-    type: text-input
+    type: secret-input
     required: true
     label:
       en_US: Vector Database (JSON)
@@ -49,7 +49,7 @@ credentials_for_provider:
       en_US: '{"provider":"pgvector","config":{...}}'
       zh_Hans: '{"provider":"pgvector","config":{...}}'
   local_graph_db_json:
-    type: text-input
+    type: secret-input
     required: false
     label:
       en_US: Graph Database (JSON)
@@ -58,7 +58,7 @@ credentials_for_provider:
       en_US: '{"provider":"neo4j","config":{...}}'
       zh_Hans: '{"provider":"neo4j","config":{...}}'
   local_reranker_json:
-    type: text-input
+    type: secret-input
     required: false
     label:
       en_US: Reranker (JSON)
@@ -66,6 +66,36 @@ credentials_for_provider:
     placeholder:
       en_US: '{"provider":"cohere","config":{...}}'
       zh_Hans: '{"provider":"cohere","config":{...}}'
+  max_concurrent_memory_operations:
+    type: text-input
+    required: false
+    default: 40
+    label:
+      en_US: Max Concurrent Memory Operations
+      zh_Hans: 最大并发记忆操作数
+    help:
+      en_US: "Maximum number of concurrent async Mem0 operations per process (search/add/get/get_all/update/delete/delete_all/history). For production environments, it is recommended to set this value greater than 20. If not configured, the default value 40 is used."
+      zh_Hans: "每个进程允许的 Mem0 异步记忆操作最大并发数（包含 search/add/get/get_all/update/delete/delete_all/history 等所有操作）。生产环境建议大于 20；如果未配置，则使用默认值 40。"
+  pgvector_min_connections:
+    type: text-input
+    required: false
+    default: 10
+    label:
+      en_US: PGVector Min Connections
+      zh_Hans: PGVector 最小连接数
+    help:
+      en_US: "Minimum number of connections in the PGVector connection pool. If not configured, the default value 10 is used."
+      zh_Hans: "PGVector 连接池中的最小连接数。如果未配置，则使用默认值 10。"
+  pgvector_max_connections:
+    type: text-input
+    required: false
+    default: 40
+    label:
+      en_US: PGVector Max Connections
+      zh_Hans: PGVector 最大连接数
+    help:
+      en_US: "Maximum number of connections in the PGVector connection pool. It is recommended to keep this value consistent with max_concurrent_memory_operations in production environments. If not configured, the default value 40 is used."
+      zh_Hans: "PGVector 连接池中的最大连接数。生产环境中建议与 max_concurrent_memory_operations 保持一致。如果未配置，则使用默认值 40。"
 
 tools:
   - tools/add_memory.yaml

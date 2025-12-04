@@ -1,5 +1,61 @@
 # Mem0 Dify Plugin - Changelog
 
+## Version 0.1.6 (2025-01-30)
+
+### 🔒 Security & Configuration Enhancements
+
+This release focuses on security improvements for sensitive configuration data and adds user-configurable performance parameters for better production environment control.
+
+#### Highlights
+- **Security Enhancement**: All sensitive configuration fields now use `secret-input` type instead of `text-input`
+  - `local_llm_json` - Now hidden in UI to protect API keys and sensitive credentials
+  - `local_embedder_json` - Now hidden in UI to protect API keys
+  - `local_vector_db_json` - Now hidden in UI to protect database credentials
+  - `local_graph_db_json` - Now hidden in UI to protect graph database credentials
+  - `local_reranker_json` - Now hidden in UI to protect reranker API keys
+- **User-Configurable Performance Parameters**: Added three new optional configuration parameters
+  - `max_concurrent_memory_operations` - Maximum concurrent async Mem0 operations per process (default: 40)
+  - `pgvector_min_connections` - Minimum PGVector connection pool size (default: 10)
+  - `pgvector_max_connections` - Maximum PGVector connection pool size (default: 40)
+- **Production Recommendations**: Added guidance for production environments
+  - `max_concurrent_memory_operations` should be greater than 20 for production
+  - `pgvector_max_connections` should match `max_concurrent_memory_operations` for optimal performance
+
+#### 🔧 Technical Details
+- **Security Improvements**:
+  - Changed all JSON configuration fields from `text-input` to `secret-input` type
+  - Sensitive information (API keys, passwords, tokens) is now hidden in Dify UI
+  - No functional changes, only UI display behavior
+- **New Configuration Functions**:
+  - Added `get_int_credential()` function in `utils/config_builder.py` for safe integer parsing
+  - Handles string-to-integer conversion with validation and fallback to defaults
+  - Validates positive integer values and logs warnings for invalid inputs
+- **PGVector Connection Pool Configuration**:
+  - Modified `_normalize_pgvector_config()` to accept user-configurable min/max connections
+  - User-provided values override default constants when specified
+  - Maintains backward compatibility with existing configurations
+- **Async Client Concurrency Control**:
+  - `AsyncLocalClient` now reads `max_concurrent_memory_operations` from credentials
+  - Semaphore size dynamically adjusts based on user configuration
+  - Falls back to `MAX_CONCURRENT_MEMORY_OPERATIONS` constant if not configured
+
+#### 📝 Files Changed
+- **Modified Files**:
+  - `provider/mem0ai.yaml` - Changed all JSON config fields to `secret-input`, added three new performance parameters
+  - `utils/config_builder.py` - Added `get_int_credential()` function, modified `_normalize_pgvector_config()` to accept user config
+  - `utils/mem0_client.py` - Modified `AsyncLocalClient.__init__()` to use user-configured concurrency limit
+
+#### ⚠️ Migration Notes
+- **No Breaking Changes**: All changes are backward compatible
+- **UI Changes**: Sensitive configuration fields will now appear as password fields (hidden input) in Dify UI
+- **New Optional Parameters**: The three new performance parameters are optional and use sensible defaults if not configured
+- **Production Recommendations**: Users are encouraged to configure these parameters based on their workload and infrastructure
+
+#### 🐛 Bug Fixes
+- Fixed Dify plugin framework compatibility issue: changed `type: number` to `type: text-input` for numeric configuration fields (Dify framework doesn't support `number` type in credentials)
+
+---
+
 ## Version 0.1.5 (2025-01-30)
 
 ### 🎯 Search Memory Timestamp Support & Code Refactoring

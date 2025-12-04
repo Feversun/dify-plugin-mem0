@@ -1,0 +1,598 @@
+# Mem0 Dify Plugin - Configuration Guide
+
+This guide provides detailed installation and configuration instructions for the Mem0 Dify Plugin.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Configuration Steps](#configuration-steps)
+- [Configuration Examples](#configuration-examples)
+- [Quick Start: Testing Your Configuration](#quick-start-testing-your-configuration)
+- [Runtime Behavior](#runtime-behavior)
+- [Important Operational Notes](#important-operational-notes)
+- [Troubleshooting](#troubleshooting)
+- [Additional Resources](#additional-resources)
+
+## Installation
+
+### Step 1: Access Plugin Management
+
+1. **Log in to Dify Dashboard**
+   - Access your Dify instance (self-hosted or Dify Cloud)
+   - Example: `https://your-dify-instance.com` or `https://cloud.dify.ai`
+
+2. **Navigate to Plugins**
+   - Go to `Settings` → `Plugins`
+   - Or directly access `/plugins` path
+
+### Step 2: Install the Plugin
+
+**Option A: Install from GitHub (Recommended)**
+1. Click `Install from GitHub` button
+2. Enter your repository URL: `https://github.com/yourusername/mem0_dify_plugin`
+3. Click `Install`
+4. Wait for installation to complete
+
+**Option B: Install from Package**
+1. Click `Upload Plugin` button
+2. Select the `.difypkg` file (e.g., `mem0ai-0.1.6.difypkg`)
+3. Wait for upload and installation to complete
+
+### Step 3: Verify Installation
+
+After installation, you should see the `mem0ai` plugin in your plugins list. The plugin provides 8 tools:
+- `add_memory`, `search_memory`, `get_all_memories`, `get_memory`
+- `update_memory`, `delete_memory`, `delete_all_memories`, `get_memory_history`
+
+## Configuration Steps
+
+### Step 1: Choose Operation Mode
+
+First, select the operation mode in plugin credentials:
+
+- **Async Mode** (`async_mode=true`, default)
+  - Recommended for production environments
+  - Supports high concurrency
+  - Write operations (Add/Update/Delete/Delete_All): non-blocking, return ACCEPT status immediately
+  - Read operations (Search/Get/Get_All/History): wait for results with timeout protection (default: 30s)
+
+- **Sync Mode** (`async_mode=false`)
+  - Recommended for testing environments
+  - All operations block until completion
+  - You can see the actual results of each memory operation immediately
+  - **Note**: Sync mode has no timeout protection. If timeout protection is needed, use `async_mode=true`
+
+### Step 2: Configure Models and Databases
+
+After installation, click on the `mem0ai` plugin to configure it. You'll see credential fields that need to be filled.
+
+**Important Notes:**
+- All JSON configuration fields are displayed as **password fields** (hidden input) in the Dify UI to protect sensitive information
+- Each JSON must be a valid JSON object with the structure: `{ "provider": "<provider_name>", "config": { ... } }`
+- For detailed configuration options and supported providers, refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration)
+
+**Required Fields:**
+- `local_llm_json` - LLM provider configuration (JSON string)
+- `local_embedder_json` - Embedding model configuration (JSON string)
+- `local_vector_db_json` - Vector database configuration (JSON string)
+
+**Optional Fields:**
+- `local_graph_db_json` - Graph database configuration (JSON string, e.g., Neo4j)
+- `local_reranker_json` - Reranker configuration (JSON string)
+
+**How to Fill JSON Fields:**
+1. Copy the JSON example from the [Configuration Examples](#configuration-examples) section below
+2. Replace placeholder values (like `your-api-key`, `your-deployment-name`) with your actual values
+3. **Validate your JSON** using an online JSON validator before pasting
+4. Paste the complete JSON string into the corresponding field in Dify UI
+5. Ensure the JSON is valid (no trailing commas, proper quotes, matching braces)
+6. Click outside the field to trigger validation (Dify will show errors if JSON is invalid)
+
+**Common Mistakes to Avoid:**
+- ❌ Trailing commas: `{"key": "value",}` (wrong)
+- ✅ Correct: `{"key": "value"}` (right)
+- ❌ Single quotes: `{'key': 'value'}` (wrong, JSON requires double quotes)
+- ✅ Correct: `{"key": "value"}` (right)
+- ❌ Missing quotes around keys: `{key: "value"}` (wrong)
+- ✅ Correct: `{"key": "value"}` (right)
+
+### Step 3: Configure Performance Parameters (Optional, Recommended for Production)
+
+You can configure the following performance parameters in plugin settings to optimize concurrency and database connections for production environments:
+
+**Performance Parameters:**
+- `max_concurrent_memory_operations` - Maximum concurrent memory operations (default: 40)
+  - Controls the maximum number of concurrent async Mem0 operations per process
+  - Applies to all operations: search/add/get/get_all/update/delete/delete_all/history
+  - **Production recommendation**: Set to a value greater than 20
+- `pgvector_min_connections` - PGVector minimum connections (default: 10)
+  - Sets the minimum number of connections in the PGVector connection pool
+- `pgvector_max_connections` - PGVector maximum connections (default: 40)
+  - Sets the maximum number of connections in the PGVector connection pool
+  - **Production recommendation**: Keep this value consistent with `max_concurrent_memory_operations`
+
+**Notes:**
+- If performance parameters are not configured, default values will be used
+- Performance parameters only apply when using PGVector as the vector database
+
+## Configuration Examples
+
+> **📚 Reference**: For detailed configuration options and supported providers, please refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration).
+
+### LLM Configuration (`local_llm_json`)
+
+**Azure OpenAI Example:**
+
+```json
+{
+  "provider": "azure_openai",
+  "config": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.1,
+    "max_tokens": 256,
+    "azure_kwargs": {
+      "azure_deployment": "gpt-4o-mini",
+      "api_version": "2024-10-21",
+      "azure_endpoint": "https://your-resource.openai.azure.com",
+      "api_key": "your-azure-openai-api-key",
+      "default_headers": {
+        "CustomHeader": "Mem0_Dify_Plugin"
+      }
+    }
+  }
+}
+```
+
+**OpenAI Example:**
+
+```json
+{
+  "provider": "openai",
+  "config": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.1,
+    "max_tokens": 256,
+    "api_key": "your-openai-api-key"
+  }
+}
+```
+
+**Ollama Example (Local):**
+
+```json
+{
+  "provider": "ollama",
+  "config": {
+    "model": "llama3.1:8b",
+    "ollama_base_url": "http://localhost:11434",
+    "temperature": 0.1,
+    "max_tokens": 256
+  }
+}
+```
+
+### Embedder Configuration (`local_embedder_json`)
+
+**Azure OpenAI Example:**
+
+```json
+{
+  "provider": "azure_openai",
+  "config": {
+    "model": "text-embedding-3-small",
+    "azure_kwargs": {
+      "api_version": "2024-10-21",
+      "azure_deployment": "text-embedding-3-small",
+      "azure_endpoint": "https://your-resource.openai.azure.com",
+      "api_key": "your-azure-openai-api-key",
+      "default_headers": {
+        "CustomHeader": "Mem0_Dify_Plugin"
+      }
+    }
+  }
+}
+```
+
+**OpenAI Example:**
+
+```json
+{
+  "provider": "openai",
+  "config": {
+    "model": "text-embedding-3-small",
+    "api_key": "your-openai-api-key"
+  }
+}
+```
+
+**HuggingFace Example (Local, requires sentence-transformers):**
+
+```json
+{
+  "provider": "huggingface",
+  "config": {
+    "model": "multi-qa-MiniLM-L6-cos-v1"
+  }
+}
+```
+
+**Note**: HuggingFace embedding models are automatically cached locally after first download.
+
+### Vector Store Configuration (`local_vector_db_json`)
+
+**Option 1: Using Individual Parameters (Recommended for beginners)**
+
+```json
+{
+  "provider": "pgvector",
+  "config": {
+    "dbname": "mem0_vectors",
+    "user": "postgres",
+    "password": "your-password",
+    "host": "localhost",
+    "port": "5432",
+    "sslmode": "disable"
+  }
+}
+```
+
+**Note**: The plugin will automatically build a `connection_string` from these parameters. Connection pool settings (`minconn`/`maxconn`) will be automatically set based on your performance parameters or defaults.
+
+**Option 2: Using Connection String (Advanced)**
+
+If you already have a PostgreSQL connection string, you can use it directly:
+
+```json
+{
+  "provider": "pgvector",
+  "config": {
+    "connection_string": "postgresql://postgres:your-password@localhost:5432/mem0_vectors?sslmode=disable",
+    "collection_name": "mem0"
+  }
+}
+```
+
+**Example format:**
+```json
+{
+  "provider": "pgvector",
+  "config": {
+    "connection_string": "postgresql://your-user:your-password@your-host:5432/your-dbname?sslmode=require",
+    "collection_name": "mem0"
+  }
+}
+```
+
+**Note**: When using `connection_string`, individual parameters (user, password, host, etc.) are ignored. Connection pool settings are still automatically applied.
+
+**Option 3: Using Connection Pool (Most Advanced)**
+
+If you have a pre-configured psycopg2 connection pool, you can pass it directly. This requires custom Python code and is not recommended for Dify plugin usage.
+
+**Important Notes:**
+- If using individual parameters, `user` is required
+- The plugin automatically sets `minconn` and `maxconn` based on your `pgvector_min_connections` and `pgvector_max_connections` settings (or defaults: 10 and 40)
+- Parameter priority: `connection_pool` > `connection_string` > individual parameters
+- If you provide both `connection_string` and individual parameters, `connection_string` takes precedence
+
+### Graph Store Configuration (`local_graph_db_json`) - Optional
+
+**Neo4j Example:**
+
+```json
+{
+  "provider": "neo4j",
+  "config": {
+    "url": "bolt://localhost:7687",
+    "username": "neo4j",
+    "password": "your-neo4j-password",
+    "database": "neo4j"
+  }
+}
+```
+
+**For Neo4j Cloud (AuraDB):**
+
+```json
+{
+  "provider": "neo4j",
+  "config": {
+    "url": "neo4j+s://your-instance-id.databases.neo4j.io",
+    "username": "neo4j",
+    "password": "your-neo4j-password"
+  }
+}
+```
+
+**Note**: Graph database is optional. If not configured, the plugin will work without graph memory features.
+
+### Reranker Configuration (`local_reranker_json`) - Optional
+
+**Option 1: Cohere Reranker (API-based)**
+
+```json
+{
+  "provider": "cohere",
+  "config": {
+    "model": "rerank-english-v3.0",
+    "api_key": "your-cohere-api-key",
+    "top_k": 5
+  }
+}
+```
+
+**Option 2: HuggingFace Reranker (Local model, requires transformers library)**
+
+```json
+{
+  "provider": "huggingface",
+  "config": {
+    "model": "BAAI/bge-reranker-v2-m3",
+    "device": "cpu",
+    "top_k": 5,
+    "batch_size": 32,
+    "max_length": 512
+  }
+}
+```
+
+**Note**: HuggingFace models are automatically cached locally after first download. Subsequent uses will load from cache without re-downloading.
+
+**Option 3: Sentence Transformer Reranker (Local model, requires sentence-transformers library)**
+
+```json
+{
+  "provider": "sentence_transformer",
+  "config": {
+    "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "device": "cpu",
+    "top_k": 5,
+    "batch_size": 32,
+    "show_progress_bar": false
+  }
+}
+```
+
+**Note**: Sentence Transformer models are also automatically cached locally after first download.
+
+## Quick Start: Testing Your Configuration
+
+After completing the configuration steps above, test your setup:
+
+1. **Create a Test Workflow**
+   - Go to `Workflows` in Dify Dashboard
+   - Create a new workflow
+   - Add the `add_memory` tool to your workflow
+
+2. **Test Add Memory**
+   - Use parameters: `{"user": "I love Italian food", "assistant": "Great! I'll remember that.", "user_id": "test_user_001"}`
+   - **Expected Result**:
+     - In **async mode**: Returns `{"status": "ACCEPT", "results": [{"id": "", "memory": "", "event": "ACCEPT"}]}`
+     - In **sync mode**: Returns the actual memory object with `id` and `memory` fields
+
+3. **Test Search Memory**
+   - Add the `search_memory` tool and use: `{"query": "What food does the user like?", "user_id": "test_user_001", "top_k": 5}`
+   - **Expected Result**: Returns a list of memories with `id`, `memory`, `score`, `metadata`, and `timestamp` (if available)
+
+4. **Verify Configuration**
+   - If tools work correctly, your configuration is valid
+   - If you encounter errors, check the [Troubleshooting](#troubleshooting) section
+
+For detailed usage examples, see the [Usage Examples](#usage-examples) section below.
+
+## Runtime Behavior
+
+### Async Mode (`async_mode=true`, default)
+
+- **Write Operations** (Add/Update/Delete/Delete_All):
+  - Non-blocking, return ACCEPT status immediately
+  - Operations are performed in the background
+  - Best for production environments with high traffic
+
+- **Read Operations** (Search/Get/Get_All/History):
+  - Wait for results and return actual data
+  - **Timeout protection**: All async read operations have timeout mechanisms (default: 30s, configurable)
+  - On timeout or error: logs event, cancels background tasks, returns default/empty results
+
+### Sync Mode (`async_mode=false`)
+
+- **All Operations**:
+  - Block until completion
+  - You can see the actual results of each operation immediately
+  - Best for testing and debugging
+  - **Note**: No timeout protection. If timeout protection is needed, use `async_mode=true`
+
+### Service Degradation
+
+When operations timeout or encounter errors:
+- The event is logged with full exception details
+- Background tasks are cancelled to prevent resource leaks (async mode only)
+- Default/empty results are returned (empty list `[]` for Search/Get_All/History, `None` for Get)
+- Dify workflow continues execution without interruption
+
+### Configurable Timeout (v0.1.2+)
+
+All read operations (Search/Get/Get_All/History) support user-configurable timeout values:
+- Timeout parameters are available in the Dify plugin configuration interface as manual input fields
+- If not specified, tools use default values (30 seconds for all read operations)
+- Invalid timeout values are caught and logged with a warning, defaulting to constants
+
+### Default Timeout Values
+
+- Search Memory: 30 seconds (configurable)
+- Get All Memories: 30 seconds (configurable)
+- Get Memory: 30 seconds (configurable)
+- Get Memory History: 30 seconds (configurable)
+- `MAX_REQUEST_TIMEOUT`: 60 seconds
+
+**Note**: Sync mode has no timeout protection (blocking calls). If timeout protection is needed, use `async_mode=true`
+
+## Important Operational Notes
+
+### Delete All Memories Operation
+
+> **Note**: When using the `delete_all_memories` tool to delete memories in batch, Mem0 will automatically reset the vector index to optimize performance and reclaim space. You may see a log message like `WARNING: Resetting index mem0...` during this operation. This is a **normal and expected behavior** — the warning indicates that the vector store table is being dropped and recreated to ensure optimal query performance after bulk deletion. No action is needed from your side.
+
+### PGVector Configuration
+
+See the [Vector Store Configuration](#vector-store-configuration-local_vector_db_json) section above for detailed configuration options. Key points:
+
+- **Connection Pool**: Automatically configured with min=10, max=40 connections (configurable via performance parameters)
+- **Parameter Priority**: `connection_pool` > `connection_string` > individual parameters
+- **Automatic Processing**: The plugin automatically builds `connection_string` from individual parameters and sets connection pool settings
+
+## Troubleshooting
+
+### Installation Issues
+
+**Problem**: Upload failed
+- **Solution**: 
+  - Ensure the plugin package is not corrupted
+  - Try re-downloading or rebuilding the package
+  - Check file size and format
+  - Verify network connection
+
+**Problem**: Plugin not appearing in Dify
+- **Solution**: 
+  - Check that the plugin was successfully installed
+  - Try refreshing the page
+  - Check Dify logs for installation errors
+  - Try reinstalling the plugin
+
+**Problem**: "Plugin already installed" error when running `python -m main`
+- **Solution**: 
+  - This is a Dify plugin management issue, not a code error
+  - Uninstall the plugin from Dify UI (Settings → Plugins → Uninstall)
+  - Or use CLI: `dify plugin uninstall mem0ai`
+  - Then re-run `python -m main`
+
+### Configuration Issues
+
+**Problem**: Tools cannot be used
+- **Solution**:
+  1. Verify that operation mode (`async_mode`) is selected (default: `true`)
+  2. Ensure all required fields are filled: `local_llm_json`, `local_embedder_json`, `local_vector_db_json`
+  3. Check that JSON structure is correct: `{ "provider": "...", "config": { ... } }`
+  4. Validate JSON syntax (no trailing commas, proper quotes, matching braces)
+  5. Validate all API keys and database connection information
+  6. Check plugin logs in Dify for specific error messages
+
+**Problem**: JSON parsing errors
+- **Solution**:
+  - Ensure JSON is valid (use an online JSON validator)
+  - Remove trailing commas
+  - Ensure all strings are properly quoted
+  - Check for special characters that need escaping
+  - Copy examples exactly and only replace placeholder values
+
+**Problem**: Filter JSON errors
+- **Solution**:
+  - Ensure `filters` parameter is a valid JSON string
+  - Use an online JSON validator to check format
+  - Refer to examples in [CHANGELOG.md](CHANGELOG.md)
+
+**Problem**: HTTP timeout
+- **Solution**:
+  - Check vector database (e.g., pgvector) or graph database (Neo4j) connection configuration
+  - Verify credentials, address, and port are correct
+  - Check network connectivity
+
+### Performance Issues
+
+**Problem**: Slow operations
+- **Solution**:
+  - Increase `max_concurrent_memory_operations` for higher concurrency
+  - Adjust `pgvector_max_connections` to match concurrent operations
+  - Check database performance and connection pool settings
+
+## Usage Examples
+
+This section provides complete usage examples for all 8 tools. For a quick overview, see [README.md - Usage Examples](README.md#-usage-examples).
+
+### Basic Tool Usage
+
+**Add Memory (user_id required):**
+```json
+{
+  "user": "I love Italian food",
+  "assistant": "Great! I'll remember that.",
+  "user_id": "alex"
+}
+```
+
+**Search Memory:**
+```json
+{
+  "query": "What food does alex like?",
+  "user_id": "alex",
+  "top_k": 5
+}
+```
+
+**Search with Filters:**
+```json
+{
+  "query": "user preferences",
+  "user_id": "alex",
+  "filters": "{\"AND\": [{\"user_id\": \"alex\"}, {\"agent_id\": \"scheduler\"}]}",
+  "top_k": 5
+}
+```
+
+**Get All Memories:**
+```json
+{
+  "user_id": "alex",
+  "agent_id": "travel_assistant",
+  "limit": 50
+}
+```
+
+**Get Memory (by ID):**
+```json
+{
+  "memory_id": "memory-uuid-here"
+}
+```
+
+**Add Memory with Metadata:**
+```json
+{
+  "user": "I prefer morning meetings",
+  "assistant": "Noted!",
+  "user_id": "alex",
+  "agent_id": "scheduler",
+  "metadata": "{\"type\": \"preference\", \"priority\": \"high\"}"
+}
+```
+
+**Update Memory:**
+```json
+{
+  "memory_id": "memory-uuid-here",
+  "new_text": "I love Italian and French food"
+}
+```
+
+**Delete Memory:**
+```json
+{
+  "memory_id": "memory-uuid-here"
+}
+```
+
+**Important Notes:**
+- `user_id` is **required** for `add_memory`, `search_memory`, and `get_all_memories`
+- `filters` and `metadata` must be valid JSON strings when provided (the client will automatically parse them)
+- `top_k` defaults to 5 if not specified for `search_memory`
+- All tool parameters are case-sensitive
+- For runtime behavior details (async vs sync mode), see [Runtime Behavior](#runtime-behavior) section
+
+## Additional Resources
+
+- **Privacy Policy**: See [PRIVACY.md](PRIVACY.md) for details about data handling in local mode
+- **Changelog**: See [CHANGELOG.md](CHANGELOG.md) for detailed version history
+- **Main README**: See [README.md](README.md) for project overview and features
+- **Mem0 Official Docs**: https://docs.mem0.ai
+- **Dify Plugin Docs**: https://docs.dify.ai/docs/plugins
+
