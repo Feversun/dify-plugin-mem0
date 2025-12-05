@@ -52,7 +52,7 @@ class DeleteAllMemoriesTool(Tool):
                     user_id,
                 )
 
-            yield self.create_json_message({
+                yield self.create_json_message({
                     "status": "SUCCESS",
                     "messages": {"filters": params},
                     **DELETE_ALL_ACCEPT_RESULT,
