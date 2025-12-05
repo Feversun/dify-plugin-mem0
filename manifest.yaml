@@ -12,7 +12,7 @@ description:
   zh_Hans: 仅本地模式的 mem0 插件，async_mode 默认开启。异步模式下写操作（Add/Update/Delete）非阻塞，读操作（Search/Get）始终等待，同步模式下所有操作阻塞直至完成。
 icon: mem0_plugin.png
 resource:
-  memory: 914471000
+  memory: 927338000
   permission:
     tool:
       enabled: true
