@@ -50,7 +50,7 @@ class UpdateMemoryTool(Tool):
 
                 # Wrap update call in try-except to catch Mem0 internal errors
                 try:
-            result = client.update(memory_id, {"text": text})
+                    result = client.update(memory_id, {"text": text})
                     logger.info(
                         "Memory updated successfully (%s, memory_id: %s, new_text: %s, result: %s)",
                         mode_str,
@@ -67,7 +67,7 @@ class UpdateMemoryTool(Tool):
                     yield self.create_text_message(f"Error: {error_message}")
                     return
 
-            yield self.create_json_message({
+                yield self.create_json_message({
                     "status": "SUCCESS",
                     "messages": {"memory_id": memory_id, "text": text},
                     "results": result,

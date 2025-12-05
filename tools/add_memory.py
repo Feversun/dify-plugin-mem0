@@ -92,7 +92,7 @@ class AddMemoryTool(Tool):
                     user_id,
                 )
 
-            yield self.create_json_message({
+                yield self.create_json_message({
                     "status": "SUCCESS",
                     "messages": messages,
                     **ADD_ACCEPT_RESULT,
@@ -109,9 +109,9 @@ class AddMemoryTool(Tool):
                 )
                 yield self.create_json_message({
                     "status": "SUCCESS",
-                "messages": messages,
+                    "messages": messages,
                     "results": result,
-            })
+                })
                 yield self.create_text_message("Memory added synchronously.")
 
         except Exception as e:

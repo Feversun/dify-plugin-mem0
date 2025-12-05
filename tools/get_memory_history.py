@@ -73,7 +73,7 @@ class GetMemoryHistoryTool(Tool):
                 # If timeout protection is needed, use async_mode=true
                 client = get_local_client(self.runtime.credentials)
                 try:
-            results = client.history(memory_id)
+                    results = client.history(memory_id)
                 except Exception as e:
                     # Catch all exceptions for sync mode to ensure service degradation
                     logger.exception(
