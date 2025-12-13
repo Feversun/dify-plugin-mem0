@@ -58,7 +58,7 @@ class DeleteMemoryTool(Tool):
                     yield self.create_text_message(f"Error: {error_message}")
                     return
 
-                yield self.create_json_message({
+            yield self.create_json_message({
                     "status": "SUCCESS",
                     "messages": {"memory_id": memory_id},
                     "results": result,

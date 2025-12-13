@@ -6,7 +6,7 @@
 set -e
 
 PLUGIN_NAME="mem0ai"
-VERSION="0.0.3"
+VERSION="0.1.6"
 OUTPUT_FILE="${PLUGIN_NAME}-${VERSION}.difypkg"
 TEMP_DIR="temp_package"
 
@@ -33,6 +33,9 @@ cp -r provider "$TEMP_DIR/"
 
 # Copy tools directory
 cp -r tools "$TEMP_DIR/"
+
+# Copy utils directory
+cp -r utils "$TEMP_DIR/"
 
 # Copy assets directory
 cp -r _assets "$TEMP_DIR/"
