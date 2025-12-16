@@ -63,6 +63,10 @@ PGVECTOR_MAX_CONNECTIONS: int = 40
 # Default top_k for search
 SEARCH_DEFAULT_TOP_K: int = 5
 
+# Maximum pending background tasks before rejecting new tasks (multiple of MAX_CONCURRENT_MEMORY_OPERATIONS)
+# This prevents task queue from growing indefinitely when operations are slower than request rate
+MAX_PENDING_TASKS_MULTIPLIER: int = 5
+
 # Unified custom prompt used by both LocalClient and AsyncLocalClient
 CUSTOM_PROMPT: str = """
 **[核心约束]**

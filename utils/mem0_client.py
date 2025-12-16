@@ -7,7 +7,7 @@ import contextlib
 import hashlib
 import json
 import threading
-from typing import Any
+from typing import Any, ClassVar
 
 from mem0 import AsyncMemory, Memory
 
@@ -361,6 +361,10 @@ class LocalClient:
 class AsyncLocalClient:
     """Async local Mem0 client using configured providers."""
 
+    # Class-level tracking of background tasks (fire-and-forget operations)
+    _bg_tasks: ClassVar[set[asyncio.Future]] = set()
+    _bg_tasks_lock: ClassVar[threading.Lock] = threading.Lock()
+
     def __init__(self, credentials: dict[str, Any]) -> None:
         """Initialize the AsyncLocalClient.
 
@@ -377,16 +381,55 @@ class AsyncLocalClient:
         # optionally override the default via provider credentials;
         # if not set or invalid, MAX_CONCURRENT_MEMORY_OPERATIONS from
         # utils/constants.py is used.
-        max_ops = get_int_credential(
+        self.max_ops = get_int_credential(
             credentials,
             "max_concurrent_memory_operations",
             MAX_CONCURRENT_MEMORY_OPERATIONS,
         )
-        self._semaphore = asyncio.Semaphore(max_ops)
+        self._semaphore = asyncio.Semaphore(self.max_ops)
         # Toggle whether to use custom prompt
         self.use_custom_prompt = True
         self.custom_prompt = CUSTOM_PROMPT
         logger.info("AsyncLocalClient initialized successfully")
+
+    @classmethod
+    def get_pending_tasks_count(cls) -> int:
+        """Get the number of pending background tasks.
+
+        Returns:
+            int: Number of pending tasks.
+
+        Note:
+            Tasks are automatically removed from _bg_tasks when they complete
+            via the callback registered in track_bg_task(). This method simply
+            returns the current count without additional cleanup.
+
+        """
+        with cls._bg_tasks_lock:
+            return len(cls._bg_tasks)
+
+    @classmethod
+    def track_bg_task(cls, future: asyncio.Future, task_name: str = "unknown") -> None:
+        """Track a background task and log completion/errors.
+
+        Args:
+            future: The future object returned by run_coroutine_threadsafe.
+            task_name: Name of the task for logging.
+
+        """
+        with cls._bg_tasks_lock:
+            cls._bg_tasks.add(future)
+
+        def _done_callback(f: asyncio.Future) -> None:
+            with cls._bg_tasks_lock:
+                cls._bg_tasks.discard(f)
+            try:
+                f.result()  # This will raise if the coroutine raised
+                logger.debug("Background task '%s' completed successfully", task_name)
+            except Exception:
+                logger.exception("Background task '%s' failed", task_name)
+
+        future.add_done_callback(_done_callback)
 
     async def create(self) -> AsyncMemory:
         """Lazily create AsyncMemory once."""

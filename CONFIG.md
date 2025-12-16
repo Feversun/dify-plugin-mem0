@@ -10,6 +10,7 @@ This guide provides detailed installation and configuration instructions for the
 - [Quick Start: Testing Your Configuration](#quick-start-testing-your-configuration)
 - [Runtime Behavior](#runtime-behavior)
 - [Important Operational Notes](#important-operational-notes)
+- [Upgrade Guide](#upgrade-guide)
 - [Troubleshooting](#troubleshooting)
 - [Additional Resources](#additional-resources)
 
@@ -35,7 +36,7 @@ This guide provides detailed installation and configuration instructions for the
 
 **Option B: Install from Package**
 1. Click `Upload Plugin` button
-2. Select the `.difypkg` file (e.g., `mem0ai-0.1.6.difypkg`)
+2. Select the `.difypkg` file (e.g., `mem0ai-0.1.7.difypkg`)
 3. Wait for upload and installation to complete
 
 ### Step 3: Verify Installation
@@ -67,6 +68,8 @@ First, select the operation mode in plugin credentials:
 After installation, click on the `mem0ai` plugin to configure it. You'll see credential fields that need to be filled.
 
 **Important Notes:**
+- **For New Installations**: Use the `[REQUIRED]` marked fields with `secret-input` type (encrypted fields) for better security
+- **For Upgrades from v0.1.3**: See [Upgrade Guide](#upgrade-guide) for detailed upgrade instructions
 - All JSON configuration fields are displayed as **password fields** (hidden input) in the Dify UI to protect sensitive information
 - Each JSON must be a valid JSON object with the structure: `{ "provider": "<provider_name>", "config": { ... } }`
 - For detailed configuration options and supported providers, refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration)
@@ -321,7 +324,9 @@ If you have a pre-configured psycopg2 connection pool, you can pass it directly.
 }
 ```
 
-**Option 2: HuggingFace Reranker (Local model, requires transformers library)**
+**Option 2: HuggingFace Reranker (Local model, requires manual installation)**
+
+> ⚠️ **Important**: Starting from v0.1.7, `transformers` and `torch` are **not included** in default dependencies to keep installation fast (~22 seconds instead of ~2 minutes 25 seconds). If you want to use HuggingFace reranker, you must manually install these dependencies. See [README.md - Upgrade Guide](README.md#-upgrade-guide) for installation steps.
 
 ```json
 {
@@ -336,7 +341,10 @@ If you have a pre-configured psycopg2 connection pool, you can pass it directly.
 }
 ```
 
-**Note**: HuggingFace models are automatically cached locally after first download. Subsequent uses will load from cache without re-downloading.
+**Note**: 
+- HuggingFace models are automatically cached locally after first download
+- This only affects users who want to use **local reranker models**
+- If you use **cloud-based rerankers** (e.g., Cohere API), no additional installation is needed
 
 **Option 3: Sentence Transformer Reranker (Local model, requires sentence-transformers library)**
 
@@ -353,7 +361,7 @@ If you have a pre-configured psycopg2 connection pool, you can pass it directly.
 }
 ```
 
-**Note**: Sentence Transformer models are also automatically cached locally after first download.
+**Note**: Sentence Transformer models are automatically cached locally after first download. The `sentence-transformers` library is included in default dependencies, so no manual installation is needed.
 
 ## Quick Start: Testing Your Configuration
 
@@ -441,6 +449,14 @@ See the [Vector Store Configuration](#vector-store-configuration-local_vector_db
 - **Parameter Priority**: `connection_pool` > `connection_string` > individual parameters
 - **Automatic Processing**: The plugin automatically builds `connection_string` from individual parameters and sets connection pool settings
 
+## Upgrade Guide
+
+> 📖 **For complete upgrade instructions, including upgrading from v0.1.3 and installation time optimization details, see [README.md - Upgrade Guide](README.md#-upgrade-guide)**
+
+**Quick Summary:**
+- **Upgrading from v0.1.3**: Always upgrade to v0.1.7 for seamless compatibility (no action required). Avoid upgrading directly to v0.1.6 from v0.1.3.
+- **Installation Time**: v0.1.7 restores fast installation (~22 seconds) by removing `transformers` and `torch` dependencies. Local reranker users must manually install these dependencies.
+
 ## Troubleshooting
 
 ### Installation Issues
@@ -504,6 +520,17 @@ See the [Vector Store Configuration](#vector-store-configuration-local_vector_db
   - Increase `max_concurrent_memory_operations` for higher concurrency
   - Adjust `pgvector_max_connections` to match concurrent operations
   - Check database performance and connection pool settings
+
+**Problem**: CPU usage at 99% or "Background task queue overloaded" warnings
+- **Cause**: Write operations (add/update/delete) are accumulating faster than they can complete
+- **Solution**:
+  - Check logs for pending task counts
+  - Reduce request frequency or increase `max_concurrent_memory_operations`
+  - Consider using faster models (cloud APIs instead of local models)
+  - Monitor for "rejecting new memory operation" messages indicating system overload
+
+**Problem**: Upgrade from v0.1.3 causes Internal Server Error
+- **Solution**: See [Upgrade Guide](#upgrade-guide) for detailed instructions. In summary: Always upgrade to v0.1.7 for seamless compatibility (no action required).
 
 ## Usage Examples
 

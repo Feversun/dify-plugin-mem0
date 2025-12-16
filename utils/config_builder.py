@@ -124,6 +124,21 @@ def _parse_json_block(raw: str | dict[str, Any] | None, field_name: str) -> dict
     return data
 
 
+def _get_credential_value(
+    credentials: dict[str, Any],
+    primary_key: str,
+    fallback_key: str,
+) -> str | dict[str, Any] | None:
+    """Read credential value with backward-compatible fallback.
+
+    Prefer `primary_key` (new fields) and fall back to `fallback_key` (legacy fields).
+    """
+    primary = credentials.get(primary_key)
+    if primary is not None and primary != "":
+        return primary
+    return credentials.get(fallback_key)
+
+
 def _normalize_pgvector_config(
     config: dict[str, Any],
     min_connections: int,
@@ -293,10 +308,17 @@ def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
             "pgvector_max_connections",
             PGVECTOR_MAX_CONNECTIONS,
         )
-        llm = _parse_json_block(credentials.get("local_llm_json"), "local_llm_json")
-        embedder = _parse_json_block(credentials.get("local_embedder_json"), "local_embedder_json")
+        llm = _parse_json_block(
+            _get_credential_value(credentials, "local_llm_json_secret", "local_llm_json"),
+            "local_llm_json",
+        )
+        embedder = _parse_json_block(
+            _get_credential_value(credentials, "local_embedder_json_secret", "local_embedder_json"),
+            "local_embedder_json",
+        )
         vector_store = _parse_json_block(
-            credentials.get("local_vector_db_json"), "local_vector_db_json",
+            _get_credential_value(credentials, "local_vector_db_json_secret", "local_vector_db_json"),
+            "local_vector_db_json",
         )
 
         if llm is None:
@@ -322,10 +344,12 @@ def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
             )  # type: ignore[index]
 
         reranker = _parse_json_block(
-            credentials.get("local_reranker_json"), "local_reranker_json",
+            _get_credential_value(credentials, "local_reranker_json_secret", "local_reranker_json"),
+            "local_reranker_json",
         )
         graph_store = _parse_json_block(
-            credentials.get("local_graph_db_json"), "local_graph_db_json",
+            _get_credential_value(credentials, "local_graph_db_json_secret", "local_graph_db_json"),
+            "local_graph_db_json",
         )
 
         config: dict[str, Any] = {
