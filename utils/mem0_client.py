@@ -12,14 +12,11 @@ from typing import Any, ClassVar
 from mem0 import AsyncMemory, Memory
 
 from .config_builder import build_local_mem0_config, get_int_credential
-from .constants import (
-    ADD_SKIP_RESULT,
-    MAX_CONCURRENT_MEMORY_OPERATIONS,
-    SEMAPHORE_WAITING_THRESHOLD,
-)
+from .constants import ADD_SKIP_RESULT, CUSTOM_PROMPT, MAX_CONCURRENT_MEMORY_OPERATIONS
 from .logger import get_logger
 
 logger = get_logger(__name__)
+
 
 def _get_config_hash(credentials: dict[str, Any]) -> str:
     """Generate a hash from credentials for cache key.
@@ -102,6 +99,8 @@ class LocalClient:
         logger.info("Initializing LocalClient")
         config = build_local_mem0_config(credentials)
         self.memory = Memory.from_config(config)
+        self.use_custom_prompt = True
+        self.custom_prompt = CUSTOM_PROMPT
         logger.info("LocalClient initialized successfully")
 
     def search(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -201,6 +200,8 @@ class LocalClient:
             kwargs["run_id"] = payload.get("run_id")
         if metadata is not None:
             kwargs["metadata"] = metadata
+        if self.use_custom_prompt:
+            kwargs["prompt"] = self.custom_prompt
 
         # Use messages directly if provided; assume upstream has validated inputs
         messages = payload.get("messages")
@@ -510,31 +511,6 @@ class AsyncLocalClient:
     _bg_thread: threading.Thread | None = None
     _bg_ready = threading.Event()
     _bg_lock = threading.Lock()
-    _max_ops_hint: int | None = None
-
-    @classmethod
-    def _warn_loop_pressure(cls, loop: asyncio.AbstractEventLoop, op: str) -> None:
-        """Warn when background loop is nearing capacity to avoid log spam elsewhere."""
-        with contextlib.suppress(Exception):
-            pending = len(asyncio.all_tasks(loop))
-            max_ops_hint = cls._max_ops_hint
-            if max_ops_hint:
-                threshold = max(1, int(max_ops_hint * 0.8))
-                if pending >= threshold:
-                    logger.warning(
-                        "Background loop pending tasks high: %s (threshold=%s, max_ops=%s, op=%s)",
-                        pending,
-                        threshold,
-                        max_ops_hint,
-                        op,
-                    )
-
-    @staticmethod
-    def _log_semaphore_wait(loop: asyncio.AbstractEventLoop, start_wait: float, op: str) -> None:
-        """Log semaphore wait times; warn when it is abnormally high."""
-        wait_ms = (loop.time() - start_wait) * 1000
-        if wait_ms >= SEMAPHORE_WAITING_THRESHOLD:
-            logger.warning("Semaphore wait %.1f ms (op=%s)", wait_ms, op)
 
     @classmethod
     def ensure_bg_loop(cls) -> asyncio.AbstractEventLoop:
@@ -650,8 +626,6 @@ class AsyncLocalClient:
 
         """  # noqa: E501
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_search")
         query = payload.get("query", "")
         filters = payload.get("filters")
         limit = payload.get("limit")
@@ -678,9 +652,7 @@ class AsyncLocalClient:
                 kwargs["run_id"] = payload.get("run_id")
 
         try:
-            start_wait = loop.time()
-            async with self._search_semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_search")
+            async with self._semaphore:
                 results = await self.memory.search(query, **kwargs)
             normalized = _normalize_search_results(results)
         except Exception:
@@ -716,8 +688,6 @@ class AsyncLocalClient:
 
         """  # noqa: E501
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_add")
         metadata = payload.get("metadata")
         if isinstance(metadata, str):
             try:
@@ -734,6 +704,8 @@ class AsyncLocalClient:
             kwargs["run_id"] = payload.get("run_id")
         if metadata is not None:
             kwargs["metadata"] = metadata
+        if self.use_custom_prompt:
+            kwargs["prompt"] = self.custom_prompt
 
         messages = payload.get("messages")
         # Skip add when messages is empty/blank, return response aligned with mem0 add result shape
@@ -746,9 +718,7 @@ class AsyncLocalClient:
 
         try:
             # Limit concurrent add() to avoid exhausting DB connection pool
-            start_wait = loop.time()
             async with self._semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_add")
                 # Await to ensure persistence before returning
                 result = await self.memory.add(messages, **kwargs)
         except Exception:
@@ -773,8 +743,6 @@ class AsyncLocalClient:
 
         """
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_get_all")
 
         # Build kwargs with all provided parameters
         kwargs: dict[str, Any] = {}
@@ -799,9 +767,7 @@ class AsyncLocalClient:
 
         # Mem0's get_all always returns {"results": [...]} format
         try:
-            start_wait = loop.time()
             async with self._semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_get_all")
                 result = await self.memory.get_all(**kwargs)
             memories = result.get("results", []) if isinstance(result, dict) else []
         except Exception:
@@ -821,12 +787,8 @@ class AsyncLocalClient:
 
         """
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_get")
         try:
-            start_wait = loop.time()
             async with self._semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_get")
                 result = await self.memory.get(memory_id)
         except Exception:
             logger.exception("Error retrieving memory %s (async)", memory_id)
@@ -846,12 +808,8 @@ class AsyncLocalClient:
 
         """
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_update")
         try:
-            start_wait = loop.time()
             async with self._semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_update")
                 result = await self.memory.update(memory_id, payload.get("text"))
         except Exception:
             logger.exception("Error updating memory %s (async)", memory_id)
@@ -870,12 +828,8 @@ class AsyncLocalClient:
 
         """
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_delete")
         try:
-            start_wait = loop.time()
             async with self._semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_delete")
                 result = await self.memory.delete(memory_id)
         except Exception:
             logger.exception("Error deleting memory %s (async)", memory_id)
@@ -897,17 +851,13 @@ class AsyncLocalClient:
 
         """
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_delete_all")
         try:
-            start_wait = loop.time()
             async with self._semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_delete_all")
                 result = await self.memory.delete_all(
-                    user_id=params.get("user_id"),
-                    agent_id=params.get("agent_id"),
-                    run_id=params.get("run_id"),
-                )
+                user_id=params.get("user_id"),
+                agent_id=params.get("agent_id"),
+                run_id=params.get("run_id"),
+            )
         except Exception:
             logger.exception("Error during async delete_all operation")
             raise
@@ -925,12 +875,8 @@ class AsyncLocalClient:
 
         """
         await self.create()
-        loop = asyncio.get_running_loop()
-        self._warn_loop_pressure(loop, "async_history")
         try:
-            start_wait = loop.time()
             async with self._semaphore:
-                self._log_semaphore_wait(loop, start_wait, "async_history")
                 result = await self.memory.history(memory_id)
         except Exception:
             logger.exception("Error retrieving history for memory %s (async)", memory_id)
