@@ -21,55 +21,130 @@ credentials_for_provider:
     help:
       en_US: "When async mode is enabled, all Mem0 operations run asynchronously and concurrently. Search waits for results; Add does not."
       zh_Hans: "开启异步模式后，所有Mem0的操作都异步并发执行，Search操作会等待返回结果而Add操作不会。"
+  local_llm_json_secret:
+    type: secret-input
+    required: false
+    label:
+      en_US: "[REQUIRED] LLM Configuration"
+      zh_Hans: "【必需】LLM 配置"
+    placeholder:
+      en_US: '{"provider":"azure_openai","config":{"model":"gpt-4","api_key":"..."}}'
+      zh_Hans: '{"provider":"azure_openai","config":{"model":"gpt-4","api_key":"..."}}'
+    help:
+      en_US: "LLM provider configuration. Supported: azure_openai, openai, anthropic, etc. Use this field for new installations."
+      zh_Hans: "LLM 提供商配置。支持：azure_openai、openai、anthropic 等。新安装请使用此字段。"
+  local_embedder_json_secret:
+    type: secret-input
+    required: false
+    label:
+      en_US: "[REQUIRED] Embedder Configuration"
+      zh_Hans: "【必需】向量模型配置"
+    placeholder:
+      en_US: '{"provider":"azure_openai","config":{"model":"text-embedding-ada-002","api_key":"..."}}'
+      zh_Hans: '{"provider":"azure_openai","config":{"model":"text-embedding-ada-002","api_key":"..."}}'
+    help:
+      en_US: "Embedding model configuration. Supported: azure_openai, openai, huggingface, etc. Use this field for new installations."
+      zh_Hans: "向量模型配置。支持：azure_openai、openai、huggingface 等。新安装请使用此字段。"
+  local_vector_db_json_secret:
+    type: secret-input
+    required: false
+    label:
+      en_US: "[REQUIRED] Vector Database Configuration"
+      zh_Hans: "【必需】向量数据库配置"
+    placeholder:
+      en_US: '{"provider":"pgvector","config":{"dbname":"mem0","user":"postgres","password":"...","host":"localhost"}}'
+      zh_Hans: '{"provider":"pgvector","config":{"dbname":"mem0","user":"postgres","password":"...","host":"localhost"}}'
+    help:
+      en_US: "Vector database configuration. Supported: pgvector, milvus, qdrant, etc. Use this field for new installations."
+      zh_Hans: "向量数据库配置。支持：pgvector、milvus、qdrant 等。新安装请使用此字段。"
+  local_graph_db_json_secret:
+    type: secret-input
+    required: false
+    label:
+      en_US: "[OPTIONAL] Graph Database Configuration"
+      zh_Hans: "【可选】图数据库配置"
+    placeholder:
+      en_US: '{"provider":"neo4j","config":{"url":"bolt://localhost:7687","username":"neo4j","password":"..."}}'
+      zh_Hans: '{"provider":"neo4j","config":{"url":"bolt://localhost:7687","username":"neo4j","password":"..."}}'
+    help:
+      en_US: "Optional graph database configuration for relationship storage. Use this field for new installations."
+      zh_Hans: "可选的图数据库配置用于存储关系。新安装请使用此字段。"
+  local_reranker_json_secret:
+    type: secret-input
+    required: false
+    label:
+      en_US: "[OPTIONAL] Reranker Configuration"
+      zh_Hans: "【可选】重排序模型配置"
+    placeholder:
+      en_US: '{"provider":"cohere","config":{"model":"rerank-english-v2.0","api_key":"..."}}'
+      zh_Hans: '{"provider":"cohere","config":{"model":"rerank-english-v2.0","api_key":"..."}}'
+    help:
+      en_US: "Optional reranker configuration for search result optimization. Use this field for new installations."
+      zh_Hans: "可选的重排序模型配置用于优化搜索结果。新安装请使用此字段。"
   local_llm_json:
-    type: secret-input
-    required: true
+    type: text-input
+    required: false
     label:
-      en_US: LLM (JSON)
-      zh_Hans: LLM（JSON）
+      en_US: "[DEPRECATED] LLM (Legacy)"
+      zh_Hans: "【已弃用】LLM（旧版）"
     placeholder:
       en_US: '{"provider":"azure_openai","config":{...}}'
       zh_Hans: '{"provider":"azure_openai","config":{...}}'
+    help:
+      en_US: "DEPRECATED: Only for backward compatibility with v0.1.3. New users should use the encrypted field above."
+      zh_Hans: "已弃用：仅用于与 v0.1.3 的向后兼容。新用户请使用加密字段。"
   local_embedder_json:
-    type: secret-input
-    required: true
+    type: text-input
+    required: false
     label:
-      en_US: Embedder (JSON)
-      zh_Hans: 向量模型（JSON）
+      en_US: "[DEPRECATED] Embedder (Legacy)"
+      zh_Hans: "【已弃用】向量模型（旧版）"
     placeholder:
       en_US: '{"provider":"azure_openai","config":{...}}'
       zh_Hans: '{"provider":"azure_openai","config":{...}}'
+    help:
+      en_US: "DEPRECATED: Only for backward compatibility with v0.1.3. New users should use the encrypted field above."
+      zh_Hans: "已弃用：仅用于与 v0.1.3 的向后兼容。新用户请使用加密字段。"
   local_vector_db_json:
-    type: secret-input
-    required: true
+    type: text-input
+    required: false
     label:
-      en_US: Vector Database (JSON)
-      zh_Hans: 向量数据库（JSON）
+      en_US: "[DEPRECATED] Vector Database (Legacy)"
+      zh_Hans: "【已弃用】向量数据库（旧版）"
     placeholder:
       en_US: '{"provider":"pgvector","config":{...}}'
       zh_Hans: '{"provider":"pgvector","config":{...}}'
+    help:
+      en_US: "DEPRECATED: Only for backward compatibility with v0.1.3. New users should use the encrypted field above."
+      zh_Hans: "已弃用：仅用于与 v0.1.3 的向后兼容。新用户请使用加密字段。"
   local_graph_db_json:
-    type: secret-input
+    type: text-input
     required: false
     label:
-      en_US: Graph Database (JSON)
-      zh_Hans: 图数据库（JSON）
+      en_US: "[DEPRECATED] Graph Database (Legacy)"
+      zh_Hans: "【已弃用】图数据库（旧版）"
     placeholder:
       en_US: '{"provider":"neo4j","config":{...}}'
       zh_Hans: '{"provider":"neo4j","config":{...}}'
+    help:
+      en_US: "DEPRECATED: Only for backward compatibility with v0.1.3. New users should use the encrypted field above."
+      zh_Hans: "已弃用：仅用于与 v0.1.3 的向后兼容。新用户请使用加密字段。"
   local_reranker_json:
-    type: secret-input
+    type: text-input
     required: false
     label:
-      en_US: Reranker (JSON)
-      zh_Hans: 重排序模型（JSON）
+      en_US: "[DEPRECATED] Reranker (Legacy)"
+      zh_Hans: "【已弃用】重排序模型（旧版）"
     placeholder:
       en_US: '{"provider":"cohere","config":{...}}'
       zh_Hans: '{"provider":"cohere","config":{...}}'
+    help:
+      en_US: "DEPRECATED: Only for backward compatibility with v0.1.3. New users should use the encrypted field above."
+      zh_Hans: "已弃用：仅用于与 v0.1.3 的向后兼容。新用户请使用加密字段。"
   max_concurrent_memory_operations:
     type: text-input
     required: false
-    default: 40
+    default: "40"
     label:
       en_US: Max Concurrent Memory Operations
       zh_Hans: 最大并发记忆操作数
@@ -79,7 +154,7 @@ credentials_for_provider:
   pgvector_min_connections:
     type: text-input
     required: false
-    default: 10
+    default: "10"
     label:
       en_US: PGVector Min Connections
       zh_Hans: PGVector 最小连接数
@@ -89,7 +164,7 @@ credentials_for_provider:
   pgvector_max_connections:
     type: text-input
     required: false
-    default: 40
+    default: "40"
     label:
       en_US: PGVector Max Connections
       zh_Hans: PGVector 最大连接数

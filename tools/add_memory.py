@@ -7,7 +7,11 @@ from typing import Any
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from utils.config_builder import is_async_mode
-from utils.constants import ADD_ACCEPT_RESULT, ADD_SKIP_RESULT
+from utils.constants import (
+    ADD_ACCEPT_RESULT,
+    ADD_SKIP_RESULT,
+    MAX_PENDING_TASKS_MULTIPLIER,
+)
 from utils.logger import get_logger
 from utils.mem0_client import (
     get_async_local_client,
@@ -83,15 +87,34 @@ class AddMemoryTool(Tool):
             mode_str = "async" if async_mode else "sync"
             if async_mode:
                 client = get_async_local_client(self.runtime.credentials)
+                # Check background task queue status
+                pending_count = client.get_pending_tasks_count()
+                if pending_count > client.max_ops * MAX_PENDING_TASKS_MULTIPLIER:
+                    logger.warning(
+                        "Background task queue overloaded (%d pending tasks), "
+                        "rejecting new add operation (user_id: %s)",
+                        pending_count,
+                        user_id,
+                    )
+                    error_message = (
+                        f"System overloaded ({pending_count} pending tasks), "
+                        f"rejecting new memory operation."
+                    )
+                    yield self.create_json_message(
+                        {"status": "ERROR", "messages": error_message, "results": []})
+                    yield self.create_text_message(f"Failed to add memory: {error_message}")
+                    return
                 # Submit add to background event loop without awaiting (non-blocking)
                 loop = client.ensure_bg_loop()
-                asyncio.run_coroutine_threadsafe(client.add(payload), loop)
+                future = asyncio.run_coroutine_threadsafe(client.add(payload), loop)
+                client.track_bg_task(future, f"add_memory(user_id={user_id})")
                 logger.info(
-                    "Memory addition submitted to background loop (%s, user_id: %s)",
+                    "Memory addition submitted to background loop "
+                    "(%s, user_id: %s, pending_tasks: %d)",
                     mode_str,
                     user_id,
+                    pending_count + 1,
                 )
-
                 yield self.create_json_message({
                     "status": "SUCCESS",
                     "messages": messages,

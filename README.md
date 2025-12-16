@@ -1,4 +1,4 @@
-# Mem0 Dify Plugin v0.1.6
+# Mem0 Dify Plugin v0.1.7
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dify Plugin](https://img.shields.io/badge/Dify-Plugin-blue)](https://dify.ai)
@@ -26,10 +26,26 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 - 🎯 **Entity Scoping** - user_id (required for add), agent_id, run_id
 - 📊 **Metadata System** - Custom JSON metadata for rich context
 - 🔍 **Filters** - JSON filters supported by Mem0 local mode
-- 🌍 **Internationalized** - 4 languages (en/zh/pt/ja)
+- 🌍 **Internationalized** - 中英双语 (Chinese/English)
 - ⚙️ **Async Mode Switch** - `async_mode` is enabled by default; Write ops (Add/Update/Delete) are non-blocking in async mode, Read ops (Search/Get) always wait; in sync mode all operations block until completion.
 
-### What's New (v0.1.6)
+### What's New (v0.1.7)
+- **CPU Overload Protection**: Implemented comprehensive task queue monitoring and overload protection
+  - Background task tracking prevents task accumulation causing CPU 99% utilization
+  - Automatic rejection of new write operations when queue exceeds 5x concurrency limit
+  - Enhanced logging with pending task counts for better observability
+- **Seamless Upgrade Compatibility**: Resolved upgrade errors from v0.1.3 to v0.1.7. See [Upgrade Guide](#-upgrade-guide) for details.
+- **Installation Time Optimization**: Removed `transformers` and `torch` dependencies to restore fast installation (~22 seconds). See [Upgrade Guide](#-upgrade-guide) for local reranker installation instructions.
+- **Configuration Validation**: Added validation to catch common configuration errors
+  - Detects when LLM providers are mistakenly used in vector database configuration
+  - Provides clear error messages before Mem0 validation fails
+- **Code Quality Improvements**:
+  - Fixed recurring indentation errors in multiple tool files
+  - Optimized code formatting and removed line length violations
+  - Changed `_max_ops` from private to public attribute (`max_ops`)
+  - Used `MAX_PENDING_TASKS_MULTIPLIER` constant instead of hardcoded values
+
+### Previous Updates (v0.1.6)
 - **Security Enhancement**: All sensitive configuration fields now use `secret-input` type to protect API keys and credentials in the Dify UI
   - All JSON configuration fields (`local_llm_json`, `local_embedder_json`, `local_vector_db_json`, `local_graph_db_json`, `local_reranker_json`) are now hidden in the UI
 - **User-Configurable Performance Parameters**: Added three new optional configuration parameters for production environments
@@ -198,6 +214,57 @@ search(
 
 ---
 
+## ⚠️ Upgrade Guide
+
+### Upgrading from v0.1.3
+
+**⚠️ Critical Issue**: If you upgrade from v0.1.3 directly to v0.1.6, you will encounter an **Internal Server Error** because:
+- v0.1.3 used `text-input` type for credential fields
+- v0.1.6 changed to `secret-input` type for the same fields
+- Dify framework cannot handle this type change on existing credentials
+
+**Two Solutions:**
+
+1. **✅ Recommended: Upgrade to v0.1.7 (Seamless)**
+   - v0.1.7 supports backward-compatible credential upgrades
+   - Your old `text-input` credentials will continue to work automatically
+   - **No action required** - just upgrade the plugin to v0.1.7
+   - Optionally migrate to new encrypted fields (`*_secret`) for enhanced security later
+   - This is the **recommended approach** for all users
+
+2. **Alternative: Delete and Reconfigure (for v0.1.6 upgrade)**
+   - **Only needed if upgrading directly to v0.1.6** (not recommended)
+   - Before upgrading, delete all existing plugin credentials in Dify UI
+   - Upgrade the plugin to v0.1.6 or v0.1.7
+   - Reconfigure all credentials using the new encrypted fields (`*_secret`)
+
+**Summary**: Always upgrade to v0.1.7 for seamless compatibility. Avoid upgrading directly to v0.1.6 from v0.1.3.
+
+### Installation Time Optimization
+
+**v0.1.6 Installation Time Issue:**
+- v0.1.6 included `transformers` and `torch` dependencies for local reranker support
+- This **significantly increased installation time** from ~22 seconds to ~2 minutes 25 seconds
+
+**v0.1.7 Solution:**
+- **Removed `transformers` and `torch` from default dependencies** to restore fast installation (~22 seconds)
+- **For Local Reranker Users Only**: If you need to use local reranker models (e.g., HuggingFace models), you must manually install these dependencies in the Dify plugin container after plugin installation:
+
+```bash
+# Access the Dify plugin container
+docker exec -it <plugin-container-name> /bin/bash
+
+# Install transformers and torch
+pip install transformers torch
+```
+
+**Note**: 
+- This only affects users who want to use **local reranker models**
+- If you use **cloud-based rerankers** (e.g., Cohere API, OpenAI), no additional installation is needed
+- Most users do not need local rerankers, so this change benefits the majority of users
+
+---
+
 ## 📌 Important Notes
 
 > 📖 **For detailed operational notes, runtime behavior, and troubleshooting, see [CONFIG.md](CONFIG.md)**
@@ -246,6 +313,7 @@ done
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.1.7 | 2025-12-16 | CPU overload protection, seamless upgrade compatibility, configuration validation, code quality improvements |
 | v0.1.6 | 2025-01-30 | Security enhancement (secret-input for all configs), user-configurable performance parameters |
 | v0.1.5 | 2025-01-30 | Search memory timestamp support, code refactoring with helpers module |
 | v0.1.4 | 2025-11-23 | Logging investigation and documentation update |

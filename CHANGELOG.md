@@ -1,5 +1,95 @@
 # Mem0 Dify Plugin - Changelog
 
+## Version 0.1.7 (2025-12-16)
+
+### 🚀 Performance Optimization & Upgrade Compatibility
+
+This release focuses on resolving CPU overload issues, implementing backward-compatible credential upgrades, and improving overall system stability under high-load scenarios.
+
+#### Highlights
+- **CPU Overload Protection**: Implemented comprehensive task queue monitoring and overload protection
+  - Added background task tracking mechanism to monitor pending operations
+  - Implemented queue size check with rejection when exceeding 5x concurrency limit
+  - Prevents task accumulation causing CPU 99% utilization
+  - Logs pending task count for better observability
+- **Backward-Compatible Credential Upgrade**: Resolved upgrade errors from v0.1.3 to v0.1.6+
+  - Preserved legacy `text-input` fields for backward compatibility
+  - Added new `*_secret` fields with `secret-input` type for enhanced security
+  - Code automatically prefers new secret fields and falls back to legacy fields
+  - Users can upgrade without deleting old credentials (no Internal Server Error)
+  - **Important**: If upgrading from v0.1.3 directly to v0.1.6 (skipping v0.1.7), you must delete old credentials before upgrading
+- **Installation Time Optimization**: Removed `transformers` and `torch` dependencies to restore fast installation
+  - v0.1.6 installation time increased from ~22 seconds to ~2 minutes 25 seconds due to these dependencies
+  - v0.1.7 restores fast installation (~22 seconds) by removing these dependencies
+  - **For Local Reranker Users**: If you need local reranker models (e.g., HuggingFace), manually install `transformers` and `torch` in the Dify plugin container after installation
+- **Configuration Validation**: Added validation to catch common configuration errors
+  - Detects when LLM providers are mistakenly used in vector database configuration
+  - Provides clear error messages before Mem0 validation fails
+  - Improved help text in `mem0ai.yaml` with provider examples
+- **Code Quality Improvements**:
+  - Fixed recurring indentation errors in multiple tool files
+  - Optimized code formatting (removed line length violations)
+  - Changed `_max_ops` from private to public attribute (`max_ops`)
+  - Removed redundant task cleanup logic in `get_pending_tasks_count()`
+  - Used `MAX_PENDING_TASKS_MULTIPLIER` constant instead of hardcoded value
+
+#### 🔧 Technical Details
+- **Task Tracking System**:
+  - Added `AsyncLocalClient._bg_tasks` (ClassVar) to track all background tasks
+  - Added `track_bg_task()` method with automatic cleanup via callbacks
+  - Added `get_pending_tasks_count()` method for queue monitoring
+  - Tasks are automatically removed when completed (no manual cleanup needed)
+- **Overload Protection Logic**:
+  - Check: `pending_count > max_ops * MAX_PENDING_TASKS_MULTIPLIER` (default: 5x)
+  - Action: Reject new write operations (add/update/delete/delete_all) when queue is full
+  - Log: Warning with operation type and relevant ID (user_id or memory_id)
+  - Response: Return error message indicating system overload
+- **Credential Schema Changes**:
+  - New fields: `local_llm_json_secret`, `local_embedder_json_secret`, `local_vector_db_json_secret`, `local_graph_db_json_secret`, `local_reranker_json_secret`
+  - Legacy fields: `local_llm_json`, `local_embedder_json`, `local_vector_db_json`, `local_graph_db_json`, `local_reranker_json` (marked as DEPRECATED)
+  - Added `_get_credential_value()` helper in `utils/config_builder.py` for fallback logic
+  - Field order reorganized: recommended fields first, deprecated fields last
+- **Configuration Improvements**:
+  - Fixed credential default values: changed numeric defaults to string format ("40", "10")
+  - Added comprehensive help text for all credential fields
+  - Added validation for vector store provider type
+
+#### 📝 Files Changed
+- **Modified Files**:
+  - `provider/mem0ai.yaml` - Reorganized credential fields, added backward-compatible schema, improved help text
+  - `utils/config_builder.py` - Added `_get_credential_value()` for credential fallback logic, added vector store provider validation
+  - `utils/mem0_client.py` - Added task tracking system, changed `_max_ops` to `max_ops`, removed redundant cleanup logic
+  - `utils/constants.py` - Added `MAX_PENDING_TASKS_MULTIPLIER` constant
+  - `tools/add_memory.py` - Added overload protection, task tracking, fixed indentation errors
+  - `tools/update_memory.py` - Added overload protection, task tracking, fixed indentation errors
+  - `tools/delete_memory.py` - Added overload protection, task tracking, fixed indentation errors
+  - `tools/delete_all_memories.py` - Added overload protection, task tracking, fixed indentation errors
+  - `tools/get_memory.py` - Fixed indentation errors
+  - `tools/get_memory_history.py` - Fixed indentation errors
+  - `.gitignore` - Added `logs/` directory and `*.log` files
+  - `build_package.sh` - Updated version to 0.1.7
+
+#### ⚠️ Migration Notes
+- **Upgrading from v0.1.3**: See [README.md - Upgrade Guide](README.md#-upgrade-guide) for detailed upgrade instructions and installation time optimization details.
+- **Credential Migration**: New installations should use the `[REQUIRED]` marked secret fields; legacy fields are maintained for compatibility only
+- **Performance Impact**: Write operations may be rejected when system is overloaded (queue > 5x concurrency limit)
+- **Monitoring**: Watch for "Background task queue overloaded" warnings in logs
+
+#### 🐛 Bug Fixes
+- Fixed credential default value type errors: numeric defaults changed to strings to comply with Dify's `text-input` type requirements
+- Fixed recurring indentation errors in tool files that caused `IndentationError` during plugin installation
+- Fixed credential upgrade issue: users no longer need to delete old credentials when upgrading from text-input to secret-input fields
+
+#### 🎯 Performance Recommendations
+1. **Monitor Queue Length**: Check logs for pending task counts
+2. **Adjust Configuration**: If overload warnings are frequent:
+   - Increase `max_concurrent_memory_operations` (current: 40, recommend > 20 for production)
+   - Use faster models (cloud API instead of local models)
+   - Reduce request rate or use sync mode for testing
+3. **CPU Optimization**: The task tracking and overload protection significantly reduce CPU usage by preventing unbounded task accumulation
+
+---
+
 ## Version 0.1.6 (2025-01-30)
 
 ### 🔒 Security & Configuration Enhancements

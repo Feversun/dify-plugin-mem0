@@ -67,4 +67,7 @@ mem0-api-docs/
 .verification.dify.json
 api-docs-comparison.md
 api-scraping-prompt.md
+
+# Log files
 logs/
+*.log
