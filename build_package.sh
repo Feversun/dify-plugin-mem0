@@ -34,6 +34,9 @@ cp -r provider "$TEMP_DIR/"
 # Copy tools directory
 cp -r tools "$TEMP_DIR/"
 
+# Copy utils directory
+cp -r utils "$TEMP_DIR/"
+
 # Copy assets directory
 cp -r _assets "$TEMP_DIR/"
 

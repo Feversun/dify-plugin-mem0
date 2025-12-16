@@ -53,6 +53,8 @@ HISTORY_OPERATION_TIMEOUT: int = 30
 # Maximum concurrent async memory operations per process to avoid exhausting DB/vector store pools
 # Applies to all async operations: search, add, get, get_all, update, delete, delete_all, history
 MAX_CONCURRENT_MEMORY_OPERATIONS: int = 40
+# Warn when semaphore wait exceeds this threshold (milliseconds)
+SEMAPHORE_WAITING_THRESHOLD: float = 100.0
 
 # Database connection pool settings for pgvector
 # These values should align with MAX_CONCURRENT_MEMORY_OPERATIONS to ensure sufficient connections

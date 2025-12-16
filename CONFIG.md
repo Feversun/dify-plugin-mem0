@@ -613,6 +613,7 @@ This section provides complete usage examples for all 8 tools. For a quick overv
 - `filters` and `metadata` must be valid JSON strings when provided (the client will automatically parse them)
 - `top_k` defaults to 5 if not specified for `search_memory`
 - All tool parameters are case-sensitive
+- **`agent_id` Parameter**: When using `agent_id` in Dify workflows, you should use the **Dify application's `app_id`** (not `workflow_id`). This is because `workflow_id` changes every time you publish a workflow, while `app_id` remains stable and allows you to scope memories consistently across workflow versions
 - For runtime behavior details (async vs sync mode), see [Runtime Behavior](#runtime-behavior) section
 
 ## Additional Resources
