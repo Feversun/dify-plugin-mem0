@@ -1,10 +1,10 @@
-# Mem0 Dify Plugin v0.1.7
+# Mem0 Dify Plugin v0.1.8
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dify Plugin](https://img.shields.io/badge/Dify-Plugin-blue)](https://dify.ai)
 [![Mem0 AI](https://img.shields.io/badge/Mem0-AI-green)](https://mem0.ai)
 
-A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelligent memory layer, providing **Local-only** tools with a unified client for self-hosted setups.
+A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelligent memory layer, providing **self-hosted mode** tools with a unified client for self-hosted setups.
 
 ---
 
@@ -21,15 +21,37 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 - ✅ **Get Memory History** - View change history
 
 ### Advanced Capabilities
-- 🖥️ **Local Mode Only** - Run with Local Mem0 (JSON-based config)
+- 🖥️ **Self-Hosted Mode** - Run with Local Mem0 (JSON-based config)
 - 🧱 **Simplified Local Config** - 5 JSON blocks: LLM, Embedder, Vector DB, Graph DB (optional), Reranker (optional)
 - 🎯 **Entity Scoping** - user_id (required for add), agent_id, run_id
 - 📊 **Metadata System** - Custom JSON metadata for rich context
-- 🔍 **Filters** - JSON filters supported by Mem0 local mode
+- 🔍 **Filters** - JSON filters supported by Mem0 self-hosted mode
 - 🌍 **Internationalized** - 中英双语 (Chinese/English)
-- ⚙️ **Async Mode Switch** - `async_mode` is enabled by default; Write ops (Add/Update/Delete) are non-blocking in async mode, Read ops (Search/Get) always wait; in sync mode all operations block until completion.
+- ⚙️ **Async Mode Switch** - `async_mode` is enabled by default; Write ops (Add/Update/Delete) are non-blocking in async mode, Read ops (Search/Get/History) always wait; in sync mode all operations block until completion.
 
-### What's New (v0.1.7)
+### What's New (v0.1.8)
+- **Dynamic Log Level Configuration**: Added runtime log level control without redeployment
+  - New `log_level` credential field (INFO/DEBUG/WARNING/ERROR) for online adjustment
+  - Thread-safe log level updates apply to all existing loggers immediately
+  - Default log level is INFO; can be changed to DEBUG for detailed troubleshooting
+- **Timeout Optimization**: Unified and optimized operation timeouts for better performance
+  - Read operations (Search/Get/Get_All/History): unified timeout reduced to 15 seconds (from 30s)
+  - Write operations (Add/Update/Delete): timeout set to 30 seconds for persistence operations
+  - Improved responsiveness while maintaining reliability
+- **Request Tracing Enhancement**: Added `run_id` parameter to all tools for call chain tracking
+  - Recommended to use Dify's `workflow_run_id` to link multiple memory operations in the same workflow
+  - **Important**: `run_id` is only used for request tracing and logging; it is NOT used as a condition for memory layering or filtering
+  - All tools now include request ID in logs for better traceability
+- **Configuration Cleanup**: Removed deprecated configuration fields from UI
+  - Legacy `*_json` fields (e.g., `local_llm_json`) are no longer shown in configuration UI
+  - Only `*_secret` fields (e.g., `local_llm_json_secret`) are available for new installations
+  - **Important**: If you encounter configuration issues after upgrade, please delete old credentials and reconfigure using the new `*_secret` fields
+- **Code Quality Improvements**:
+  - Improved logging with request ID tracking across all operations
+  - Better error messages with context information
+  - Optimized timeout handling with unified constants
+
+### Previous Updates (v0.1.7)
 - **CPU Overload Protection**: Implemented comprehensive task queue monitoring and overload protection
   - Background task tracking prevents task accumulation causing CPU 99% utilization
   - Automatic rejection of new write operations when queue exceeds 5x concurrency limit
@@ -110,11 +132,12 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 After installation, you need to configure:
 
 1. **Operation Mode**: Choose between async (default, recommended for production) or sync mode (for testing)
-2. **Required JSON Configs**: `local_llm_json`, `local_embedder_json`, `local_vector_db_json`
-3. **Optional Configs**: `local_graph_db_json`, `local_reranker_json`
+2. **Required JSON Configs**: `local_llm_json_secret`, `local_embedder_json_secret`, `local_vector_db_json_secret`
+3. **Optional Configs**: `local_graph_db_json_secret`, `local_reranker_json_secret`
 4. **Performance Parameters** (optional): `max_concurrent_memory_operations`, `pgvector_min_connections`, `pgvector_max_connections`
+5. **Log Level** (optional): `log_level` (INFO/DEBUG/WARNING/ERROR, default: INFO) - can be changed online without redeployment
 
-**Note**: All JSON configuration fields are displayed as password fields (hidden input) in the Dify UI to protect sensitive information.
+**Note**: All JSON configuration fields are displayed as password fields (hidden input) in the Dify UI to protect sensitive information. Legacy `*_json` fields are no longer shown in the UI.
 
 ### Start Using
 
@@ -150,6 +173,7 @@ Once configured, all 8 tools are available in your workflows!
 - `user_id` is **required** for `add_memory`, `search_memory`, and `get_all_memories`
 - `filters` and `metadata` must be valid JSON strings when provided
 - `top_k` defaults to 5 if not specified for `search_memory`
+- `run_id` (optional): Recommended to use Dify's `workflow_run_id` for call chain tracking. **Note**: This parameter is only for tracing and is NOT used as a condition for memory layering or filtering
 
 ---
 
@@ -215,6 +239,21 @@ search(
 ---
 
 ## ⚠️ Upgrade Guide
+
+### Upgrading to v0.1.8
+
+**⚠️ Important Configuration Changes:**
+- **Deprecated Fields Removed**: Legacy `*_json` configuration fields (e.g., `local_llm_json`, `local_embedder_json`) are no longer shown in the configuration UI
+- **New Fields Required**: Only `*_secret` fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`) are available for new installations
+- **If You Encounter Configuration Issues**: 
+  - Delete old credentials in Dify UI (Settings → Plugins → mem0ai → Delete Credentials)
+  - Reconfigure using the new `*_secret` fields
+  - This ensures a clean configuration state without legacy field conflicts
+
+**New Features:**
+- **Dynamic Log Level**: You can now change log level (INFO/DEBUG/WARNING/ERROR) in plugin credentials without redeployment
+- **Request Tracing**: All tools now support `run_id` parameter for better call chain tracking (recommended to use Dify's `workflow_run_id`)
+- **Timeout Optimization**: Read operation timeout reduced to 15 seconds for better responsiveness
 
 ### Upgrading from v0.1.3
 
@@ -313,9 +352,10 @@ done
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.1.8 | 2025-12-25 | Dynamic log level configuration, timeout optimization, request tracing with run_id, configuration cleanup |
 | v0.1.7 | 2025-12-16 | CPU overload protection, seamless upgrade compatibility, configuration validation, code quality improvements |
-| v0.1.6 | 2025-01-30 | Security enhancement (secret-input for all configs), user-configurable performance parameters |
-| v0.1.5 | 2025-01-30 | Search memory timestamp support, code refactoring with helpers module |
+| v0.1.6 | 2025-12-08 | Security enhancement (secret-input for all configs), user-configurable performance parameters |
+| v0.1.5 | 2025-11-28 | Search memory timestamp support, code refactoring with helpers module |
 | v0.1.4 | 2025-11-23 | Logging investigation and documentation update |
 | v0.1.3 | 2025-11-22 | Unified logging configuration, database connection pool optimization, pgvector config enhancement, constant naming optimization |
 | v0.1.2 | 2025-11-21 | Configurable timeout parameters, optimized default timeouts (30s for all read ops), code quality improvements |
@@ -323,7 +363,7 @@ done
 | v0.1.0 | 2025-11-19 | Smart memory management, robust error handling for non-existent memories, race condition protection, bug fixes |
 | v0.0.9 | 2025-11-17 | Unified return format, enhanced async operations (Update/Delete/Delete_All non-blocking), standardized fields, extended constants, complete documentation |
 | v0.0.8 | 2025-11-11 | async_mode credential (default true), sync/async tool routing, provider validation aligned, docs updated |
-| v0.0.7 | 2025-11-08 | Local-only refactor, centralized constants, background event loop with graceful shutdown, non-blocking add (queued), search via background loop, normalized outputs |
+| v0.0.7 | 2025-11-08 | Self-hosted mode refactor, centralized constants, background event loop with graceful shutdown, non-blocking add (queued), search via background loop, normalized outputs |
 | v0.0.4 | 2025-10-29 | Dual-mode (SaaS/Local), unified client, simplified Local JSON config, search top_k, add requires user_id, HTTP→SDK refactor |
 | v0.0.3 | 2025-10-06 | Added 6 new tools, v2 API support, metadata, multi-entity |
 | v0.0.2 | 2025-02-24 | Basic add and retrieve functionality |
@@ -379,5 +419,5 @@ I sincerely appreciate the foundational work and outstanding contribution of the
 **Key Differences from the Original Project:**
 
 The original project primarily supported Mem0 platform (SaaS mode) and synchronous request handling. This project has been fully refactored to include:
-* **Local Mode**: Supports configuring and running the user's own LLM, embedding models, vector databases (e.g., pgvector/Milvus), graph databases, and more.
+* **Self-Hosted Mode**: Supports configuring and running the user's own LLM, embedding models, vector databases (e.g., pgvector/Milvus), graph databases, and more.
 * **Asynchronous Support**: Utilizes asynchronous request handling, significantly improving performance and concurrency.

@@ -29,9 +29,32 @@ Please provide the following metadata of your plugin to make it easier for the r
 
 <!-- Please briefly describe the purpose of the new plugin or the updates made to the existing plugin -->
 
-This version update (v0.1.7) brings CPU overload protection, seamless upgrade compatibility, and enhanced system stability to the Mem0 Dify Plugin. The plugin integrates [Mem0 AI](https://mem0.ai)'s intelligent memory layer into Dify, providing comprehensive memory management capabilities for AI applications. The plugin operates exclusively in **local mode**, allowing users to configure and manage their own LLM, embedding models, vector databases, graph databases, and rerankers.
+This version update (v0.1.8) brings dynamic log level configuration, timeout optimization, request tracing capabilities, and configuration cleanup to the Mem0 Dify Plugin. The plugin integrates [Mem0 AI](https://mem0.ai)'s intelligent memory layer into Dify, providing comprehensive memory management capabilities for AI applications. The plugin operates exclusively in **self-hosted mode**, allowing users to configure and manage their own LLM, embedding models, vector databases, graph databases, and rerankers.
 
-### What's New in v0.1.7:
+### What's New in v0.1.8:
+
+- **🎯 Dynamic Log Level Configuration**: Added runtime log level control without redeployment
+  - New `log_level` credential field (INFO/DEBUG/WARNING/ERROR) for online adjustment
+  - Thread-safe log level updates apply to all existing loggers immediately
+  - Default log level is INFO; can be changed to DEBUG for detailed troubleshooting
+  - Changes take effect immediately without requiring plugin redeployment
+
+- **⚡ Timeout Optimization**: Unified and optimized operation timeouts for better performance
+  - Read operations (Search/Get/Get_All/History): unified timeout reduced to 15 seconds (from 30s)
+  - Write operations (Add/Update/Delete): timeout set to 30 seconds for persistence operations
+  - Improved responsiveness while maintaining reliability
+
+- **🔍 Request Tracing Enhancement**: Added `run_id` parameter to all tools for call chain tracking
+  - Recommended to use Dify's `workflow_run_id` to link multiple memory operations in the same workflow
+  - **Important**: `run_id` is only used for request tracing and logging; it is NOT used as a condition for memory layering or filtering
+  - All tools now include request ID in logs for better traceability
+
+- **🧹 Configuration Cleanup**: Removed deprecated configuration fields from UI
+  - Legacy `*_json` fields (e.g., `local_llm_json`, `local_embedder_json`) are no longer shown in configuration UI
+  - Only `*_secret` fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`) are available for new installations
+  - **Important**: If you encounter configuration issues after upgrade, please delete old credentials and reconfigure using the new `*_secret` fields
+
+### Previous Updates (v0.1.7):
 
 - **🚀 CPU Overload Protection**: Implemented comprehensive task queue monitoring and overload protection
   - Background task tracking prevents task accumulation causing CPU 99% utilization
@@ -58,29 +81,26 @@ This version update (v0.1.7) brings CPU overload protection, seamless upgrade co
 
 ### ⚠️ Important Upgrade Notes:
 
-**⚠️ Critical: Upgrading from v0.1.3**
+**⚠️ Critical: Configuration Changes in v0.1.8**
+
+**Deprecated Fields Removed**: Legacy `*_json` configuration fields (e.g., `local_llm_json`, `local_embedder_json`) are no longer shown in the configuration UI. If you encounter configuration issues after upgrade, please delete old credentials and reconfigure using the new `*_secret` fields.
+
+**Upgrading from v0.1.3:**
 
 **Problem**: If you upgrade from v0.1.3 directly to v0.1.6, you will encounter an **Internal Server Error** because:
 - v0.1.3 used `text-input` type for credential fields
 - v0.1.6 changed to `secret-input` type for the same fields
 - Dify framework cannot handle this type change on existing credentials
 
-**Two Solutions:**
+**Solution:**
+- **✅ Recommended: Upgrade to v0.1.7+ (Seamless)**
+  - v0.1.7+ supports backward-compatible credential upgrades
+  - Your old `text-input` credentials will continue to work automatically
+  - **No action required** - just upgrade the plugin to v0.1.7+
+  - Optionally migrate to new encrypted fields (`*_secret`) for enhanced security later
+  - This is the **recommended approach** for all users
 
-1. **✅ Recommended: Upgrade to v0.1.7 (Seamless)**
-   - v0.1.7 supports backward-compatible credential upgrades
-   - Your old `text-input` credentials will continue to work automatically
-   - **No action required** - just upgrade the plugin to v0.1.7
-   - Optionally migrate to new encrypted fields (`*_secret`) for enhanced security later
-   - This is the **recommended approach** for all users
-
-2. **Alternative: Delete and Reconfigure (for v0.1.6 upgrade)**
-   - **Only needed if upgrading directly to v0.1.6** (not recommended)
-   - Before upgrading, delete all existing plugin credentials in Dify UI
-   - Upgrade the plugin to v0.1.6 or v0.1.7
-   - Reconfigure all credentials using the new encrypted fields (`*_secret`)
-
-**Summary**: Always upgrade to v0.1.7 for seamless compatibility. Avoid upgrading directly to v0.1.6 from v0.1.3.
+**Summary**: Always upgrade to v0.1.7+ for seamless compatibility. Avoid upgrading directly to v0.1.6 from v0.1.3.
 
 **Installation Time Optimization:**
 
@@ -88,7 +108,7 @@ This version update (v0.1.7) brings CPU overload protection, seamless upgrade co
 - v0.1.6 included `transformers` and `torch` dependencies for local reranker support
 - This **significantly increased installation time** from ~22 seconds to ~2 minutes 25 seconds
 
-**v0.1.7 Solution:**
+**v0.1.7+ Solution:**
 - **Removed `transformers` and `torch` from default dependencies** to restore fast installation (~22 seconds)
 - **For Local Reranker Users Only**: If you need to use local reranker models (e.g., HuggingFace models), you must manually install these dependencies in the Dify plugin container after plugin installation:
 
@@ -140,7 +160,7 @@ pip install transformers torch
   - **Async Mode** (default): Recommended for production, supports high concurrency with non-blocking write operations
   - **Sync Mode**: Recommended for testing, all operations block until completion for immediate result visibility
 
-- **Local-Only Architecture**:
+- **Self-Hosted Mode Architecture**:
   - All data stored in user's own infrastructure (vector database, graph database)
   - No data sent to external servers
   - Complete user control over data storage and processing
@@ -197,8 +217,15 @@ Please confirm that your plugin README includes all necessary information:
 
 - **README.md**: Project overview, quick start guide, feature highlights, and brief usage examples with references to detailed documentation
 - **CONFIG.md**: Complete installation and configuration guide with detailed examples for all providers, troubleshooting, and operational notes
-- **PRIVACY.md**: Complete privacy policy explaining local mode operation and data handling
+- **PRIVACY.md**: Complete privacy policy explaining self-hosted mode operation and data handling
 - **CHANGELOG.md**: Detailed version history and changes for all versions
+
+**Documentation Improvements in v0.1.8:**
+- Added dynamic log level configuration documentation
+- Updated timeout values and operation behavior documentation
+- Added `run_id` parameter usage guide and important notes
+- Updated configuration cleanup instructions for deprecated fields
+- Enhanced troubleshooting section with configuration migration guidance
 
 **Documentation Improvements in v0.1.7:**
 - Added troubleshooting section for CPU overload and upgrade compatibility issues
@@ -222,7 +249,7 @@ Based on Dify Plugin Privacy Protection [Guidelines](https://docs.dify.ai/plugin
 
 **No user personal data is collected by this plugin.**
 
-This plugin operates exclusively in **local mode**, which means:
+This plugin operates exclusively in **self-hosted mode**, which means:
 
 - **All data is stored in the user's own infrastructure** - Users configure and manage their own vector database and graph database
 - **No data is sent to external servers** - All processing happens locally using user-configured services (LLM, embedding models, databases)
@@ -234,6 +261,11 @@ The plugin only processes:
 - Message metadata (timestamps, roles) - stored in user's own database
 
 **No personal identification information (PII) is required or collected beyond user-provided identifiers (user_id, agent_id, run_id).**
+
+**Security Enhancements in v0.1.8:**
+- Configuration cleanup removes deprecated fields from UI to prevent confusion
+- Enhanced request tracing with `run_id` for better auditability
+- Improved logging with context information for security monitoring
 
 **Security Enhancements in v0.1.7:**
 - Backward-compatible credential upgrade ensures seamless migration from v0.1.3
@@ -252,7 +284,7 @@ All API keys and credentials are stored locally in the user's Dify instance conf
 - [x] I confirm that I have prepared and included a privacy policy in my plugin package based on the Plugin Privacy Protection Guidelines
 
 **Privacy Policy Location**: `PRIVACY.md` is included in the plugin package and clearly explains:
-- Local mode operation and data storage
+- Self-hosted mode operation and data storage
 - Information processed by the plugin
 - User's complete control over data
 - No third-party data sharing

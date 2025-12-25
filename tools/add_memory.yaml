@@ -61,9 +61,9 @@ parameters:
       en_US: Run ID
       zh_Hans: 运行ID
     human_description:
-      en_US: Optional run identifier. Only provide if you need to associate this memory with a specific run. Leave empty otherwise.
-      zh_Hans: 可选的运行标识符。仅在需要将此记忆与特定运行关联时提供。否则留空。
-    llm_description: Optional run identifier. Only provide if associating this memory with a specific run. Leave empty otherwise.
+      en_US: "Optional unique identifier for tracking the entire memory operation call chain. Recommended to use Dify's workflow_run_id to link multiple memory operations in the same workflow. Note: This parameter is only for tracing the call chain and is NOT used as a condition for memory layering or filtering."
+      zh_Hans: 可选的唯一标识符，用于追踪整个记忆操作调用链。推荐使用 Dify 的 workflow_run_id 来关联同一工作流中的多个记忆操作。注意：此参数仅用于追踪调用链，不作为记忆分层或过滤的条件。
+    llm_description: "Optional unique identifier for tracking the entire memory operation call chain. Recommended to use Dify's workflow_run_id to link multiple memory operations in the same workflow. This parameter is only for tracing and is NOT used as a condition for memory layering or filtering."
     form: llm
   - name: metadata
     type: string
@@ -76,30 +76,17 @@ parameters:
       zh_Hans: 可选的元数据，JSON 字符串格式。仅在需要为此记忆附加自定义元数据时提供。否则留空。
     llm_description: Optional metadata as JSON string. Only provide if attaching custom metadata is needed. Leave empty otherwise.
     form: llm
-  - name: output_format
-    type: select
+  - name: timeout
+    type: number
     required: false
     label:
-      en_US: Output Format Version
-      zh_Hans: 输出格式版本
+      en_US: Timeout (seconds)
+      zh_Hans: 超时时间（秒）
     human_description:
-      en_US: The version of the output format (v1.0, v1.1, or v2). Default is v1.1.
-      zh_Hans: 输出格式的版本（v1.0、v1.1 或 v2）。默认为 v1.1。
-    llm_description: The version of the output format. Default is v1.1.
+      en_US: Optional timeout in seconds for the add operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+      zh_Hans: 可选，添加记忆操作的超时时间（秒，仅异步模式）。未指定时默认为 30 秒。仅在 async_mode=true 时生效。
+    llm_description: Optional timeout in seconds for the add operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
     form: form
-    options:
-      - value: v1.0
-        label:
-          en_US: v1.0
-          zh_Hans: v1.0
-      - value: v1.1
-        label:
-          en_US: v1.1 (default)
-          zh_Hans: v1.1（默认）
-      - value: v2
-        label:
-          en_US: v2
-          zh_Hans: v2
 extra:
   python:
     source: tools/add_memory.py

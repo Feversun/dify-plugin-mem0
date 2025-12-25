@@ -21,6 +21,17 @@ parameters:
       zh_Hans: 要获取历史记录的记忆的唯一标识符。
     llm_description: The unique identifier of the memory to get history for.
     form: llm
+  - name: run_id
+    type: string
+    required: false
+    label:
+      en_US: Run ID
+      zh_Hans: 运行ID
+    human_description:
+      en_US: "Optional unique identifier for tracking the entire memory operation call chain. Recommended to use Dify's workflow_run_id to link multiple memory operations in the same workflow. Note: This parameter is only for tracing the call chain and is NOT used as a condition for memory layering or filtering."
+      zh_Hans: 可选的唯一标识符，用于追踪整个记忆操作调用链。推荐使用 Dify 的 workflow_run_id 来关联同一工作流中的多个记忆操作。注意：此参数仅用于追踪调用链，不作为记忆分层或过滤的条件。
+    llm_description: "Optional unique identifier for tracking the entire memory operation call chain. Recommended to use Dify's workflow_run_id to link multiple memory operations in the same workflow. This parameter is only for tracing and is NOT used as a condition for memory layering or filtering."
+    form: llm
   - name: timeout
     type: number
     required: false
@@ -28,9 +39,9 @@ parameters:
       en_US: Timeout (seconds)
       zh_Hans: 超时时间（秒）
     human_description:
-      en_US: Optional timeout in seconds for the history operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
-      zh_Hans: 可选，获取历史记录操作的超时时间（秒，仅异步模式）。未指定时默认为 30 秒。仅在 async_mode=true 时生效。
-    llm_description: Optional timeout in seconds for the history operation (async mode only). Defaults to 30 if not specified. Only applies when async_mode=true.
+      en_US: Optional timeout in seconds for the history operation (async mode only). Defaults to 15 if not specified. Only applies when async_mode=true.
+      zh_Hans: 可选，获取历史记录操作的超时时间（秒，仅异步模式）。未指定时默认为 15 秒。仅在 async_mode=true 时生效。
+    llm_description: Optional timeout in seconds for the history operation (async mode only). Defaults to 15 if not specified. Only applies when async_mode=true.
     form: form
 extra:
   python:

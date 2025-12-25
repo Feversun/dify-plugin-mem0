@@ -1,10 +1,10 @@
 ## Privacy Policy
 
-This privacy policy describes how the Mem0 Dify Plugin handles your information when you use it in **local mode**.
+This privacy policy describes how the Mem0 Dify Plugin handles your information when you use it in **self-hosted mode**.
 
-### Important: Local Mode Operation
+### Important: Self-Hosted Mode Operation
 
-This plugin operates exclusively in **local mode**, which means:
+This plugin operates exclusively in **self-hosted mode**, which means:
 - **All data is stored in your own infrastructure** - You configure and manage your own vector database and graph database
 - **No data is sent to external servers** - All processing happens locally using your configured services
 - **You control all data** - You have complete control over where and how your data is stored
