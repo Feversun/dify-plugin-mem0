@@ -3,19 +3,37 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import contextlib
 import hashlib
 import json
 import threading
-from typing import Any, ClassVar
+import time
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 from mem0 import AsyncMemory, Memory
 
 from .config_builder import build_local_mem0_config, get_int_credential
-from .constants import ADD_SKIP_RESULT, CUSTOM_PROMPT, MAX_CONCURRENT_MEMORY_OPERATIONS
+from .constants import (
+    ADD_SKIP_RESULT,
+    CUSTOM_PROMPT,
+    MAX_CONCURRENT_MEMORY_OPERATIONS,
+    MAX_PENDING_TASKS_MULTIPLIER,
+    READ_OPERATION_TIMEOUT,
+    WRITE_OPERATION_TIMEOUT,
+)
 from .logger import get_logger
 
 logger = get_logger(__name__)
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+T = TypeVar("T")
+
+
+class QueueOverloadError(Exception):
+    """Raised when the background task queue is overloaded."""
 
 
 def _get_config_hash(credentials: dict[str, Any]) -> str:
@@ -96,12 +114,11 @@ class LocalClient:
             credentials (dict): Configuration for the LocalClient.
 
         """
-        logger.info("Initializing LocalClient")
         config = build_local_mem0_config(credentials)
         self.memory = Memory.from_config(config)
         self.use_custom_prompt = True
         self.custom_prompt = CUSTOM_PROMPT
-        logger.info("LocalClient initialized successfully")
+        logger.debug("LocalClient initialized")
 
     def search(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
         """Search for memories based on a query.
@@ -361,9 +378,16 @@ class LocalClient:
 class AsyncLocalClient:
     """Async local Mem0 client using configured providers."""
 
-    # Class-level tracking of background tasks (fire-and-forget operations)
+    # Class-level tracking of all background tasks submitted to the event loop
+    # (includes both read operations that wait for results and write operations
+    # that are fire-and-forget). Used for global flow control and monitoring.
     _bg_tasks: ClassVar[set[asyncio.Future]] = set()
     _bg_tasks_lock: ClassVar[threading.Lock] = threading.Lock()
+
+    # Statistics tracking for queue monitoring
+    _completed_tasks: ClassVar[int] = 0
+    _total_task_duration: ClassVar[float] = 0.0
+    _stats_lock: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self, credentials: dict[str, Any]) -> None:
         """Initialize the AsyncLocalClient.
@@ -372,7 +396,6 @@ class AsyncLocalClient:
             credentials (dict): Configuration for the AsyncLocalClient.
 
         """
-        logger.info("Initializing AsyncLocalClient")
         self.config = build_local_mem0_config(credentials)
         self.memory = None
         # Async lock to protect one-time asynchronous initialization.
@@ -390,14 +413,18 @@ class AsyncLocalClient:
         # Toggle whether to use custom prompt
         self.use_custom_prompt = True
         self.custom_prompt = CUSTOM_PROMPT
-        logger.info("AsyncLocalClient initialized successfully")
+        logger.debug("AsyncLocalClient initialized")
 
     @classmethod
     def get_pending_tasks_count(cls) -> int:
-        """Get the number of pending background tasks.
+        """Get the number of pending background tasks (read + write operations).
+
+        This includes all memory operations submitted to the background event loop:
+        - Read operations (search, get, get_all, history): submitted and awaited
+        - Write operations (add, update, delete, delete_all): fire-and-forget
 
         Returns:
-            int: Number of pending tasks.
+            int: Number of pending tasks across all operation types.
 
         Note:
             Tasks are automatically removed from _bg_tasks when they complete
@@ -409,25 +436,92 @@ class AsyncLocalClient:
             return len(cls._bg_tasks)
 
     @classmethod
+    def get_completed_stats(cls) -> tuple[int, float]:
+        """Get and reset completed task statistics for queue monitoring.
+
+        Returns:
+            tuple[int, float]: (completed_count, avg_duration_seconds) since last call.
+                              Returns (0, 0.0) if no tasks completed.
+
+        Note:
+            This method resets the internal counters after reading, so each call
+            returns stats for the period since the last call (suitable for periodic
+            monitoring).
+
+        """
+        with cls._stats_lock:
+            completed = cls._completed_tasks
+            avg_duration = cls._total_task_duration / completed if completed > 0 else 0.0
+            # Reset counters for next monitoring period
+            cls._completed_tasks = 0
+            cls._total_task_duration = 0.0
+        return completed, avg_duration
+
+    @classmethod
     def track_bg_task(cls, future: asyncio.Future, task_name: str = "unknown") -> None:
         """Track a background task and log completion/errors.
 
+        This method tracks all memory operations submitted to the background event loop,
+        regardless of whether they are fire-and-forget (write ops) or awaited (read ops).
+
         Args:
             future: The future object returned by run_coroutine_threadsafe.
-            task_name: Name of the task for logging.
+            task_name: Name of the task for logging (format: "operation(params, req_id=xxx)").
 
         """
+        start_time = time.time()
+
         with cls._bg_tasks_lock:
             cls._bg_tasks.add(future)
 
         def _done_callback(f: asyncio.Future) -> None:
+            """Task completion callback for background operations.
+
+            This callback's sole purpose is lifecycle management:
+            1. Remove task from tracking set
+            2. Update statistics for queue monitoring
+
+            Logging strategy:
+            - SUCCESS: No logging (already logged by _run_with_semaphore)
+            - TIMEOUT: No logging (already logged by _run_with_semaphore)
+            - QUEUE_OVERLOAD: No logging (already logged by _run_with_semaphore)
+            - OTHER EXCEPTIONS: No logging here; tool layer logs with business context
+
+            The pass statements are INTENTIONAL to avoid duplicate logging.
+            """
+            duration = time.time() - start_time
+
+            # Remove from tracking set
             with cls._bg_tasks_lock:
                 cls._bg_tasks.discard(f)
+
+            # Update statistics for queue monitoring (regardless of success/failure)
+            with cls._stats_lock:
+                cls._completed_tasks += 1
+                cls._total_task_duration += duration
+
+            # Check task result but avoid duplicate logging
             try:
                 f.result()  # This will raise if the coroutine raised
-                logger.debug("Background task '%s' completed successfully", task_name)
-            except Exception:
-                logger.exception("Background task '%s' failed", task_name)
+            except (asyncio.CancelledError, concurrent.futures.CancelledError) as e:
+                # Cancellation is expected in some flows (e.g. failsafe timeouts)
+                # Log at warning level to track task cancellations
+                logger.warning(
+                    "Background task '%s' was cancelled (duration: %.2fs): %s",
+                    task_name,
+                    duration,
+                    type(e).__name__,
+                )
+            except Exception as e:
+                # All other exceptions (TimeoutError, QueueOverloadError, etc.)
+                # are already logged by _run_with_semaphore or tool layer.
+                # Log here for completeness and to track duration.
+                logger.exception(
+                    "Background task '%s' completed with exception (duration: %.2fs): %s",
+                    task_name,
+                    duration,
+                    type(e).__name__,
+                )
 
         future.add_done_callback(_done_callback)
 
@@ -437,9 +531,8 @@ class AsyncLocalClient:
             return self.memory
         async with self._create_lock:
             if self.memory is None:
-                logger.info("Creating AsyncMemory instance")
                 self.memory = await AsyncMemory.from_config(self.config)
-                logger.info("AsyncMemory instance created successfully")
+                logger.debug("AsyncMemory instance created")
         return self.memory
 
     async def aclose(self) -> None:
@@ -482,7 +575,9 @@ class AsyncLocalClient:
             graph = getattr(self.memory, "graph", None)
             if graph:
                 try:
-                    if hasattr(graph, "close") and not asyncio.iscoroutinefunction(graph.close):
+                    if hasattr(graph, "close") and not asyncio.iscoroutinefunction(
+                        graph.close,
+                    ):
                         await loop.run_in_executor(None, graph.close)
                     elif hasattr(graph, "aclose"):
                         await graph.aclose()
@@ -542,14 +637,15 @@ class AsyncLocalClient:
                 logger.debug("Reusing existing long-lived background event loop")
                 return cls._bg_loop
 
-            logger.info("Starting new long-lived background event loop")
+            logger.debug("Starting new long-lived background event loop")
+
             # Define the function that runs in the new background thread
             def _runner() -> None:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 cls._bg_loop = loop
                 cls._bg_ready.set()
-                logger.info("Background event loop started (long-lived)")
+                logger.debug("Background event loop started (long-lived)")
                 loop.run_forever()  # Run the event loop forever (long lifecycle)
 
             # Prepare to start a new background thread
@@ -564,7 +660,7 @@ class AsyncLocalClient:
                 msg = "Background event loop failed to start"
                 logger.error(msg)
                 raise RuntimeError(msg)
-            logger.info("Background event loop ready (long-lived, reusable)")
+            logger.debug("Background event loop ready (long-lived, reusable)")
             return loop
 
     @classmethod
@@ -581,14 +677,21 @@ class AsyncLocalClient:
             logger.debug("No background event loop to shutdown")
             return
 
-        logger.info("Shutting down background event loop (timeout: %s)", timeout)
+        logger.debug("Shutting down background event loop (timeout: %s)", timeout)
 
         async def _drain_tasks(t: float) -> None:
             # Exclude the current task and wait for others (best-effort)
             with contextlib.suppress(Exception):
-                pending = [tsk for tsk in asyncio.all_tasks() if tsk is not asyncio.current_task()]
+                pending = [
+                    tsk
+                    for tsk in asyncio.all_tasks()
+                    if tsk is not asyncio.current_task()
+                ]
                 if pending:
-                    logger.info("Waiting for %d pending tasks to complete", len(pending))
+                    logger.debug(
+                        "Waiting for %d pending tasks to complete",
+                        len(pending),
+                    )
                     await asyncio.wait(pending, timeout=t)
 
         fut = asyncio.run_coroutine_threadsafe(_drain_tasks(timeout), loop)
@@ -602,9 +705,13 @@ class AsyncLocalClient:
         # Clear references
         cls._bg_loop = None
         cls._bg_thread = None
-        logger.info("Background event loop shutdown completed")
+        logger.debug("Background event loop shutdown completed")
 
-    async def search(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    async def search(
+        self,
+        payload: dict[str, Any],
+        timeout_s: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Search for memories based on a query.
 
         Args:
@@ -620,12 +727,14 @@ class AsyncLocalClient:
                     * {"key": "*"} (wildcard)
                     * {"AND"/"OR"/"NOT": [filters,...]} (logic ops)
                 - threshold (float, optional): Minimum score (not used in local mode).
+            timeout_s (int | None, optional): Timeout seconds for this read operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to READ_OPERATION_TIMEOUT.
 
         Returns:
             list[dict]: List of memory search results.
 
         """  # noqa: E501
-        await self.create()
         query = payload.get("query", "")
         filters = payload.get("filters")
         limit = payload.get("limit")
@@ -651,17 +760,27 @@ class AsyncLocalClient:
             if payload.get("run_id"):
                 kwargs["run_id"] = payload.get("run_id")
 
-        try:
-            async with self._semaphore:
-                results = await self.memory.search(query, **kwargs)
-            normalized = _normalize_search_results(results)
-        except Exception:
-            logger.exception("Error during async memory search")
-            raise
-        else:
-            return normalized
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=READ_OPERATION_TIMEOUT,
+        )
 
-    async def add(self, payload: dict[str, Any]) -> dict[str, Any]:
+        async def _call() -> object:
+            return await self.memory.search(query, **kwargs)
+
+        results = await self._run_with_semaphore(
+            "search",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Read operations check queue
+        )
+        return _normalize_search_results(results)
+
+    async def add(
+        self,
+        payload: dict[str, Any],
+        timeout_s: int | None = None,
+    ) -> dict[str, Any]:
         """Create a new memory.
 
         Adds new memories scoped to a single session id (e.g. user_id, agent_id, or run_id).
@@ -681,6 +800,9 @@ class AsyncLocalClient:
                 - memory_type (str, optional): Type of memory. Defaults to conversational or factual.
                   Use "procedural_memory" for procedural type.
                 - prompt (str, optional): Custom prompt to use for memory creation.
+            timeout_s (int | None, optional): Timeout seconds for this write operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to WRITE_OPERATION_TIMEOUT.
 
         Returns:
             dict: Result of the memory addition, typically with items added/updated (in "results"),
@@ -709,25 +831,33 @@ class AsyncLocalClient:
 
         messages = payload.get("messages")
         # Skip add when messages is empty/blank, return response aligned with mem0 add result shape
-        if messages is None or (
-            isinstance(messages, str) and messages.strip() == ""
-        ) or (
-            isinstance(messages, (list, tuple)) and len(messages) == 0
+        if (
+            messages is None
+            or (isinstance(messages, str) and messages.strip() == "")
+            or (isinstance(messages, (list, tuple)) and len(messages) == 0)
         ):
             return ADD_SKIP_RESULT
 
-        try:
-            # Limit concurrent add() to avoid exhausting DB connection pool
-            async with self._semaphore:
-                # Await to ensure persistence before returning
-                result = await self.memory.add(messages, **kwargs)
-        except Exception:
-            logger.exception("Error during async memory addition")
-            raise
-        else:
-            return result
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=WRITE_OPERATION_TIMEOUT,
+        )
 
-    async def get_all(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        async def _call() -> object:
+            return await self.memory.add(messages, **kwargs)
+
+        return await self._run_with_semaphore(
+            "add",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Write operations check queue
+        )
+
+    async def get_all(
+        self,
+        params: dict[str, Any],
+        timeout_s: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Get all memories based on user/agent/run identifiers with optional filters.
 
         Args:
@@ -737,13 +867,14 @@ class AsyncLocalClient:
                 - run_id (str, optional): Run ID to filter by.
                 - limit (int, optional): Maximum number of results to return.
                 - filters (dict, optional): Advanced metadata filters.
+            timeout_s (int | None, optional): Timeout seconds for this read operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to READ_OPERATION_TIMEOUT.
 
         Returns:
             list[dict]: List of memory objects.
 
         """
-        await self.create()
-
         # Build kwargs with all provided parameters
         kwargs: dict[str, Any] = {}
 
@@ -765,79 +896,125 @@ class AsyncLocalClient:
         if isinstance(filters, dict):
             kwargs["filters"] = filters
 
-        # Mem0's get_all always returns {"results": [...]} format
-        try:
-            async with self._semaphore:
-                result = await self.memory.get_all(**kwargs)
-            memories = result.get("results", []) if isinstance(result, dict) else []
-        except Exception:
-            logger.exception("Error during async get_all operation")
-            raise
-        else:
-            return memories
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=READ_OPERATION_TIMEOUT,
+        )
+        async def _call() -> dict[str, Any]:
+            return await self.memory.get_all(**kwargs)
 
-    async def get(self, memory_id: str) -> dict[str, Any]:
+        # Mem0's get_all always returns {"results": [...]} format
+        result = await self._run_with_semaphore(
+            "get_all",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Read operations check queue
+        )
+        return result.get("results", []) if isinstance(result, dict) else []
+
+    async def get(
+        self,
+        memory_id: str,
+        timeout_s: int | None = None,
+    ) -> dict[str, Any]:
         """Get a single memory by ID.
 
         Args:
             memory_id (str): The ID of the memory to retrieve.
+            timeout_s (int | None, optional): Timeout seconds for this read operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to READ_OPERATION_TIMEOUT.
 
         Returns:
             dict: Memory object with id, memory, metadata, created_at, updated_at, etc.
 
         """
-        await self.create()
-        try:
-            async with self._semaphore:
-                result = await self.memory.get(memory_id)
-        except Exception:
-            logger.exception("Error retrieving memory %s (async)", memory_id)
-            raise
-        else:
-            return result
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=READ_OPERATION_TIMEOUT,
+        )
 
-    async def update(self, memory_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        async def _call() -> dict[str, Any]:
+            return await self.memory.get(memory_id)
+
+        return await self._run_with_semaphore(
+            "get",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Read operations check queue
+        )
+
+    async def update(
+        self,
+        memory_id: str,
+        payload: dict[str, Any],
+        timeout_s: int | None = None,
+    ) -> dict[str, Any]:
         """Update a memory by ID.
 
         Args:
             memory_id (str): ID of the memory to update.
             payload (dict): Dictionary containing new content under the "text" key.
+            timeout_s (int | None, optional): Timeout seconds for this write operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to WRITE_OPERATION_TIMEOUT.
 
         Returns:
             dict: Success message indicating the memory was updated.
 
         """
-        await self.create()
-        try:
-            async with self._semaphore:
-                result = await self.memory.update(memory_id, payload.get("text"))
-        except Exception:
-            logger.exception("Error updating memory %s (async)", memory_id)
-            raise
-        else:
-            return result
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=WRITE_OPERATION_TIMEOUT,
+        )
 
-    async def delete(self, memory_id: str) -> dict[str, Any]:
+        async def _call() -> dict[str, Any]:
+            return await self.memory.update(memory_id, payload.get("text"))
+
+        return await self._run_with_semaphore(
+            "update",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Write operations check queue
+        )
+
+    async def delete(
+        self,
+        memory_id: str,
+        timeout_s: int | None = None,
+    ) -> dict[str, Any]:
         """Delete a memory by ID.
 
         Args:
             memory_id (str): The ID of the memory to delete.
+            timeout_s (int | None, optional): Timeout seconds for this write operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to WRITE_OPERATION_TIMEOUT.
 
         Returns:
             dict: Success message, typically {"message": "Memory deleted successfully!"}.
 
         """
-        await self.create()
-        try:
-            async with self._semaphore:
-                result = await self.memory.delete(memory_id)
-        except Exception:
-            logger.exception("Error deleting memory %s (async)", memory_id)
-            raise
-        else:
-            return result
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=WRITE_OPERATION_TIMEOUT,
+        )
 
-    async def delete_all(self, params: dict[str, Any]) -> dict[str, Any]:
+        async def _call() -> dict[str, Any]:
+            return await self.memory.delete(memory_id)
+
+        return await self._run_with_semaphore(
+            "delete",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Write operations check queue
+        )
+
+    async def delete_all(
+        self,
+        params: dict[str, Any],
+        timeout_s: int | None = None,
+    ) -> dict[str, Any]:
         """Delete all memories matching the given filters.
 
         Args:
@@ -845,44 +1022,184 @@ class AsyncLocalClient:
                 - user_id (str, optional): User ID to filter by.
                 - agent_id (str, optional): Agent ID to filter by.
                 - run_id (str, optional): Run ID to filter by.
+            timeout_s (int | None, optional): Timeout seconds for this write operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to WRITE_OPERATION_TIMEOUT.
 
         Returns:
             dict: Result of the deletion operation.
 
         """
-        await self.create()
-        try:
-            async with self._semaphore:
-                result = await self.memory.delete_all(
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=WRITE_OPERATION_TIMEOUT,
+        )
+
+        async def _call() -> dict[str, Any]:
+            return await self.memory.delete_all(
                 user_id=params.get("user_id"),
                 agent_id=params.get("agent_id"),
                 run_id=params.get("run_id"),
             )
-        except Exception:
-            logger.exception("Error during async delete_all operation")
-            raise
-        else:
-            return result
 
-    async def history(self, memory_id: str) -> list[dict[str, Any]]:
+        return await self._run_with_semaphore(
+            "delete_all",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Write operations check queue
+        )
+
+    async def history(
+        self,
+        memory_id: str,
+        timeout_s: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Get the history of changes for a specific memory.
 
         Args:
             memory_id (str): The ID of the memory to get history for.
+            timeout_s (int | None, optional): Timeout seconds for this read operation.
+                Timeout covers create() + waiting for semaphore + actual Mem0 operation.
+                If None, defaults to READ_OPERATION_TIMEOUT.
 
         Returns:
             list[dict]: List of history records with old_memory, new_memory, event, created_at, etc.
 
         """
-        await self.create()
+        timeout = self._get_operation_timeout_s(
+            timeout_s=timeout_s,
+            default_s=READ_OPERATION_TIMEOUT,
+        )
+
+        async def _call() -> list[dict[str, Any]]:
+            return await self.memory.history(memory_id)
+
+        return await self._run_with_semaphore(
+            "history",
+            _call,
+            timeout_s=timeout,
+            check_queue=True,  # Read operations check queue
+        )
+
+    def _get_operation_timeout_s(
+        self,
+        timeout_s: int | None,
+        default_s: int,
+    ) -> int:
+        """Resolve a safe timeout for async operations (read or write).
+
+        Args:
+            timeout_s: Optional timeout in seconds (int). If None, uses default_s.
+            default_s: Default timeout in seconds (int).
+
+        Returns:
+            int: Valid timeout value in seconds.
+
+        """
+        if timeout_s is None:
+            return default_s
+        # Ensure is valid non-negative integer
         try:
+            int_value = int(timeout_s)
+        except (TypeError, ValueError):
+            return default_s
+        if int_value < 0:
+            return default_s
+        return int_value
+
+    async def _run_with_semaphore(
+        self,
+        op_name: str,
+        fn: Callable[[], Awaitable[T]],
+        timeout_s: int | None = None,
+        *,
+        check_queue: bool = True,
+    ) -> T:
+        """Unified method to run async operations with queue check, semaphore, and timeout.
+
+        This method provides:
+        1. Optional queue overload check before execution
+        2. Semaphore-controlled concurrency
+        3. Detailed timing logs (wait time + execution time)
+        4. Optional timeout protection
+
+        Logging strategy:
+        - Queue overload: Logged here with technical details
+        - Timeout: Logged here with technical details
+        - Tool layer should NOT duplicate these logs, but should enhance return results
+          with error context for upstream applications
+
+        Args:
+            op_name: Operation name for logging (e.g., "search", "add").
+            fn: Async function to execute within semaphore.
+            timeout_s: Optional timeout in seconds (int). If None, no timeout limit.
+            check_queue: Whether to check queue length before execution.
+
+        Returns:
+            Result from fn().
+
+        Raises:
+            QueueOverloadError: If queue is overloaded and check_queue is True.
+            asyncio.TimeoutError: If operation exceeds timeout_s.
+
+        """
+        # 1. Queue overload check (optional, for both read and write operations)
+        # Log at first occurrence - tool layer should NOT duplicate this log
+        if check_queue:
+            pending = self.get_pending_tasks_count()
+            if pending > self.max_ops * MAX_PENDING_TASKS_MULTIPLIER:
+                logger.warning(
+                    "%s operation rejected: queue overloaded (%d pending tasks, max: %d)",
+                    op_name.capitalize(),
+                    pending,
+                    self.max_ops * MAX_PENDING_TASKS_MULTIPLIER,
+                )
+                error_msg = (
+                    f"Queue overloaded: {pending} pending tasks "
+                    f"(max: {self.max_ops * MAX_PENDING_TASKS_MULTIPLIER})"
+                )
+                raise QueueOverloadError(error_msg)
+
+        # 2. Execute operation with timing and semaphore control
+        async def _inner() -> T:
+            await self.create()
+
+            # Record semaphore wait time
+            wait_start = time.time()
             async with self._semaphore:
-                result = await self.memory.history(memory_id)
-        except Exception:
-            logger.exception("Error retrieving history for memory %s (async)", memory_id)
-            raise
+                wait_time = time.time() - wait_start
+
+                # Record Mem0 execution time
+                exec_start = time.time()
+                result = await fn()
+                exec_time = time.time() - exec_start
+
+                # Log timing breakdown
+                logger.info(
+                    "%s operation timing: wait=%.3fs, exec=%.3fs, total=%.3fs",
+                    op_name.capitalize(),
+                    wait_time,
+                    exec_time,
+                    wait_time + exec_time,
+                )
+
+                return result
+
+        # 3. Apply timeout protection if specified
+        # Log timeout at first occurrence - tool layer should NOT duplicate this log
+        if timeout_s is not None:
+            try:
+                return await asyncio.wait_for(_inner(), timeout=timeout_s)
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "%s operation timed out after %ds (asyncio.TimeoutError)",
+                    op_name.capitalize(),
+                    timeout_s,
+                )
+                raise
         else:
-            return result
+            # No timeout limit
+            return await _inner()
 
 
 def _cleanup_async_client(client: AsyncLocalClient, context: str = "cleanup") -> None:
@@ -906,9 +1223,15 @@ def _cleanup_async_client(client: AsyncLocalClient, context: str = "cleanup") ->
             # Waiting for cleanup to complete
             fut.result(timeout=2.0)
         except Exception:
-            logger.exception("Failed to cleanup async client resources during %s", context)
+            logger.exception(
+                "Failed to cleanup async client resources during %s",
+                context,
+            )
     else:
-        logger.debug("No background loop available for async cleanup during %s", context)
+        logger.debug(
+            "No background loop available for async cleanup during %s",
+            context,
+        )
 
 
 def get_local_client(credentials: dict[str, Any]) -> LocalClient:
@@ -979,7 +1302,41 @@ def get_async_local_client(credentials: dict[str, Any]) -> AsyncLocalClient:
                 _cleanup_async_client(old_client, context="replacement")
             _async_client = AsyncLocalClient(credentials)
             _async_client_config_hash = config_hash
+
+            # Initialize queue monitor on first client creation
+            _init_queue_monitor(credentials)
         return _async_client
+
+
+def _init_queue_monitor(_credentials: dict[str, Any]) -> None:
+    """Initialize queue monitor with default interval.
+
+    Args:
+        _credentials: Configuration dictionary (unused, kept for compatibility).
+
+    Note:
+        queue_monitor_interval configuration has been removed.
+        Queue monitor now uses a fixed default interval of 300 seconds (5 minutes).
+
+    """
+    try:
+        # Use fixed default interval (300 seconds = 5 minutes)
+        # queue_monitor_interval configuration has been removed from credentials
+        interval = 300
+
+        if interval > 0:
+            from .queue_monitor import QueueMonitor
+
+            monitor = QueueMonitor.get_instance(interval)
+            monitor.start(
+                AsyncLocalClient.get_pending_tasks_count,
+                AsyncLocalClient.get_completed_stats,
+            )
+            logger.debug("Queue monitor initialized (interval: %ds)", interval)
+        else:
+            logger.debug("Queue monitor disabled (interval: 0)")
+    except Exception:
+        logger.exception("Failed to initialize queue monitor, continuing without it")
 
 
 def reset_clients() -> None:

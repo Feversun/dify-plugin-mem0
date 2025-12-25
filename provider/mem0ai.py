@@ -11,7 +11,7 @@ from typing import Any
 from dify_plugin import ToolProvider
 from dify_plugin.errors.tool import ToolProviderCredentialValidationError
 from utils.config_builder import is_async_mode
-from utils.logger import get_logger
+from utils.logger import get_logger, set_log_level
 from utils.mem0_client import (
     get_async_local_client,
     get_local_client,
@@ -28,11 +28,15 @@ class Mem0Provider(ToolProvider):
     """
 
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
-        logger.info("Validating Mem0 provider credentials")
+        # Set log level from credentials (can be changed online)
+        log_level = credentials.get("log_level", "INFO")
+        set_log_level(log_level)
+
+        logger.debug("Validating Mem0 provider credentials")
         try:
             async_mode = is_async_mode(credentials)
             mode = "async" if async_mode else "sync"
-            logger.info("Validating credentials in %s mode", mode)
+            logger.debug("Validating credentials in %s mode", mode)
             if async_mode:
                 client = get_async_local_client(credentials)
                 loop = client.ensure_bg_loop()
@@ -44,7 +48,7 @@ class Mem0Provider(ToolProvider):
             else:
                 client = get_local_client(credentials)
                 _ = client.search({"query": "test", "user_id": "validation_test"})
-            logger.info("Credentials validated successfully")
+            logger.debug("Credentials validated successfully")
         except Exception as e:
             logger.exception("Credential validation failed")
             raise ToolProviderCredentialValidationError(str(e)) from e

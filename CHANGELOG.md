@@ -1,5 +1,98 @@
 # Mem0 Dify Plugin - Changelog
 
+## Version 0.1.8 (2025-12-25)
+
+### 🎯 Dynamic Logging & Performance Optimization
+
+This release introduces dynamic log level configuration, optimizes operation timeouts, adds request tracing capabilities, and cleans up deprecated configuration fields.
+
+#### Highlights
+- **Dynamic Log Level Configuration**: Added runtime log level control without redeployment
+  - New `log_level` credential field (INFO/DEBUG/WARNING/ERROR) for online adjustment
+  - Thread-safe log level updates apply to all existing loggers immediately
+  - Default log level is INFO; can be changed to DEBUG for detailed troubleshooting
+  - Changes take effect immediately without requiring plugin redeployment
+- **Timeout Optimization**: Unified and optimized operation timeouts for better performance
+  - Read operations (Search/Get/Get_All/History): unified timeout reduced to 15 seconds (from 30s)
+  - Write operations (Add/Update/Delete): timeout set to 30 seconds for persistence operations
+  - Improved responsiveness while maintaining reliability
+  - Unified timeout constants: `READ_OPERATION_TIMEOUT` (15s) and `WRITE_OPERATION_TIMEOUT` (30s)
+- **Request Tracing Enhancement**: Added `run_id` parameter to all tools for call chain tracking
+  - Recommended to use Dify's `workflow_run_id` to link multiple memory operations in the same workflow
+  - **Important**: `run_id` is only used for request tracing and logging; it is NOT used as a condition for memory layering or filtering
+  - All tools now include request ID in logs for better traceability
+  - Request ID format: `[req:<run_id>]` prefix in log messages
+- **Configuration Cleanup**: Removed deprecated configuration fields from UI
+  - Legacy `*_json` fields (e.g., `local_llm_json`, `local_embedder_json`) are no longer shown in configuration UI
+  - Only `*_secret` fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`) are available for new installations
+  - **Important**: If you encounter configuration issues after upgrade, please delete old credentials and reconfigure using the new `*_secret` fields
+- **Code Quality Improvements**:
+  - Improved logging with request ID tracking across all operations
+  - Better error messages with context information
+  - Optimized timeout handling with unified constants
+  - Enhanced log messages with operation context
+
+#### 🔧 Technical Details
+- **Log Level Management**:
+  - Added `set_log_level()` function in `utils/logger.py` for thread-safe log level updates
+  - Module-level log level cache with thread-safe locking
+  - Updates apply to all existing loggers in `tools.*` and `utils.*` modules
+  - Provider validation automatically sets log level from credentials
+- **Timeout Constants**:
+  - Replaced individual timeout constants (`SEARCH_OPERATION_TIMEOUT`, `GET_OPERATION_TIMEOUT`, etc.) with unified constants
+  - `READ_OPERATION_TIMEOUT: int = 15` for all read operations
+  - `WRITE_OPERATION_TIMEOUT: int = 30` for all write operations
+  - All tools use `parse_timeout()` helper for consistent timeout handling
+- **Request Tracing**:
+  - All tools extract `run_id` from `tool_parameters` (defaults to "no-run-id" if not provided)
+  - Request ID included in all log messages: `logger.info("[req:%s] ...", request_id, ...)`
+  - `run_id` is NOT included in Mem0 API payloads (only used for tracing)
+  - Helps track operations across workflow execution chains
+- **Configuration Schema**:
+  - Removed legacy `*_json` fields from `provider/mem0ai.yaml`
+  - Only `*_secret` fields are shown in configuration UI
+  - Backward compatibility: code still supports legacy fields via `_get_credential_value()` fallback, but UI no longer displays them
+
+#### 📝 Files Changed
+- **Modified Files**:
+  - `manifest.yaml` - Updated version to 0.1.8, updated description
+  - `provider/mem0ai.yaml` - Removed deprecated `*_json` fields, added `log_level` field
+  - `provider/mem0ai.py` - Added log level initialization from credentials
+  - `utils/logger.py` - Added `set_log_level()` function and thread-safe log level management
+  - `utils/constants.py` - Unified timeout constants (READ_OPERATION_TIMEOUT, WRITE_OPERATION_TIMEOUT)
+  - `tools/add_memory.py` - Added request ID tracking, improved logging
+  - `tools/update_memory.py` - Added request ID tracking, improved logging
+  - `tools/delete_memory.py` - Added request ID tracking, improved logging
+  - `tools/delete_all_memories.py` - Added request ID tracking, improved logging
+  - `tools/search_memory.py` - Added request ID tracking, improved logging
+  - `tools/get_memory.py` - Added request ID tracking, improved logging
+  - `tools/get_all_memories.py` - Added request ID tracking, improved logging
+  - `tools/get_memory_history.py` - Added request ID tracking, improved logging
+  - All tool YAML files - Added `run_id` parameter documentation
+
+#### ⚠️ Migration Notes
+- **Configuration Changes**: 
+  - Legacy `*_json` fields are no longer shown in UI
+  - If you encounter configuration issues, delete old credentials and reconfigure using `*_secret` fields
+  - No breaking changes for existing configurations (backward compatibility maintained in code)
+- **Timeout Changes**: 
+  - Read operation timeout reduced from 30s to 15s (may cause timeouts in slow environments)
+  - If you experience timeout issues, consider using sync mode or increasing timeout values
+- **New Features**: 
+  - `log_level` can be changed online without redeployment
+  - `run_id` parameter is optional but recommended for better traceability
+
+#### 🐛 Bug Fixes
+- Fixed inconsistent timeout handling across different read operations
+- Improved error messages with request context for better debugging
+
+#### 🎯 Performance Recommendations
+1. **Use Dynamic Log Level**: Set `log_level` to DEBUG for troubleshooting, then switch back to INFO for production
+2. **Request Tracing**: Use Dify's `workflow_run_id` as `run_id` parameter to track operations across workflow chains
+3. **Timeout Tuning**: If 15s timeout is too short for your environment, consider using sync mode or adjusting timeout values
+
+---
+
 ## Version 0.1.7 (2025-12-16)
 
 ### 🚀 Performance Optimization & Upgrade Compatibility
@@ -84,13 +177,13 @@ This release focuses on resolving CPU overload issues, implementing backward-com
 1. **Monitor Queue Length**: Check logs for pending task counts
 2. **Adjust Configuration**: If overload warnings are frequent:
    - Increase `max_concurrent_memory_operations` (current: 40, recommend > 20 for production)
-   - Use faster models (cloud API instead of local models)
+   - Use faster models (cloud API instead of self-hosted models)
    - Reduce request rate or use sync mode for testing
 3. **CPU Optimization**: The task tracking and overload protection significantly reduce CPU usage by preventing unbounded task accumulation
 
 ---
 
-## Version 0.1.6 (2025-01-30)
+## Version 0.1.6 (2025-12-08)
 
 ### 🔒 Security & Configuration Enhancements
 
@@ -146,7 +239,7 @@ This release focuses on security improvements for sensitive configuration data a
 
 ---
 
-## Version 0.1.5 (2025-01-30)
+## Version 0.1.5 (2025-11-28)
 
 ### 🎯 Search Memory Timestamp Support & Code Refactoring
 
@@ -485,9 +578,9 @@ This release focuses on standardizing tool outputs and extending non-blocking as
 
 ## Version 0.0.7 (2025-11-08)
 
-### 🚀 Local-only, async client, graceful shutdown
+### 🚀 Self-hosted mode, async client, graceful shutdown
 
-This release focuses on stability, local-only operation, and developer ergonomics.
+This release focuses on stability, self-hosted mode operation, and developer ergonomics.
 
 #### Highlights
 - Centralized constants in `utils/constants.py`:
@@ -633,20 +726,20 @@ All tools now support multiple entity types:
 
 ## 🔧 Technical Details
 
-### Local Mode Implementation
-- This plugin runs in **Local-only** mode using Mem0 SDK
+### Self-Hosted Mode Implementation
+- This plugin runs in **self-hosted mode** using Mem0 SDK
 - All operations use local Mem0 client (not HTTP API)
 - Requires local configuration for LLM, Embedder, and Vector DB
 
 ### Dependencies
-- `mem0` - Mem0 SDK for local mode
+- `mem0` - Mem0 SDK for self-hosted mode
 - `dify_plugin` - Dify plugin framework
 - Python 3.12
 
 ### Configuration Updates
 - Updated `provider/mem0.yaml` with all 8 tools
 - Updated `manifest.yaml` to version 0.0.3
-- Enhanced tool descriptions with local mode features
+- Enhanced tool descriptions with self-hosted mode features
 
 ---
 
@@ -724,10 +817,10 @@ All new features include complete translations:
 
 ## 📝 Notes
 
-- Plugin runs in Local-only mode (no SaaS/API mode)
+- Plugin runs in self-hosted mode (no SaaS/API mode)
 - All operations use Mem0 SDK (not HTTP API)
 - JSON responses include both structured data and human-readable text
-- Supports all Mem0 Local mode features
+- Supports all Mem0 self-hosted mode features
 
 ---
 

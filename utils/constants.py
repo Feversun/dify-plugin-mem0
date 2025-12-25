@@ -44,10 +44,10 @@ MAX_REQUEST_TIMEOUT: int = 60
 
 # Operation timeouts (in seconds) for individual Mem0 operations
 # These should be less than MAX_REQUEST_TIMEOUT to allow for error handling
-SEARCH_OPERATION_TIMEOUT: int = 30
-GET_OPERATION_TIMEOUT: int = 30
-GET_ALL_OPERATION_TIMEOUT: int = 30
-HISTORY_OPERATION_TIMEOUT: int = 30
+# Read operations: unified timeout for all read operations (search, get, get_all, history)
+READ_OPERATION_TIMEOUT: int = 15
+# Write operations: longer timeout to allow persistence
+WRITE_OPERATION_TIMEOUT: int = 30
 
 # Concurrency controls
 # Maximum concurrent async memory operations per process to avoid exhausting DB/vector store pools
@@ -63,7 +63,8 @@ PGVECTOR_MAX_CONNECTIONS: int = 40
 # Default top_k for search
 SEARCH_DEFAULT_TOP_K: int = 5
 
-# Maximum pending background tasks before rejecting new tasks (multiple of MAX_CONCURRENT_MEMORY_OPERATIONS)
+# Maximum pending background tasks before rejecting new tasks
+# (multiple of MAX_CONCURRENT_MEMORY_OPERATIONS)
 # This prevents task queue from growing indefinitely when operations are slower than request rate
 MAX_PENDING_TASKS_MULTIPLIER: int = 5
 

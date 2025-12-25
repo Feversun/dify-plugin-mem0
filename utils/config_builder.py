@@ -1,13 +1,16 @@
 """Build Mem0 local configuration from provider credentials.
 
-This module parses simplified JSON blocks for local mode:
-- local_llm_json
-- local_embedder_json
-- local_reranker_json (optional)
-- local_vector_db_json
-- local_graph_db_json (optional)
+This module parses simplified JSON blocks for self-hosted mode:
+- local_llm_json_secret (required)
+- local_embedder_json_secret (required)
+- local_vector_db_json_secret (required)
+- local_reranker_json_secret (optional)
+- local_graph_db_json_secret (optional)
 
 Each is expected to be a JSON object with at least {"provider": ..., "config": {...}}.
+
+Note: Legacy fields (local_llm_json, etc.) are still supported for backward compatibility
+but are deprecated and removed from the configuration UI.
 """
 
 from __future__ import annotations
@@ -272,8 +275,11 @@ _build_config_lock = threading.Lock()
 def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
     """Construct mem0 local config dict from simplified JSON credential blocks.
 
-    Required: local_llm_json, local_embedder_json, local_vector_db_json
-    Optional: local_reranker_json, local_graph_db_json
+    Required: local_llm_json_secret, local_embedder_json_secret, local_vector_db_json_secret
+    Optional: local_reranker_json_secret, local_graph_db_json_secret
+
+    Note: Legacy fields (local_llm_json, etc.) are still supported for backward compatibility
+    but are deprecated and removed from the configuration UI.
     """
     # Create a cache key from credentials to detect if config was already built
     try:
@@ -293,7 +299,7 @@ def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
         if cache_key and cache_key in _built_config_cache:
             return _built_config_cache[cache_key]
 
-        logger.info("Building Mem0 local configuration from credentials")
+        logger.debug("Building Mem0 local configuration from credentials")
 
         # Read optional pgvector pool settings from credentials, with safe defaults.
         # If users do not configure these fields, PGVECTOR_MIN_CONNECTIONS /
@@ -317,18 +323,22 @@ def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
             "local_embedder_json",
         )
         vector_store = _parse_json_block(
-            _get_credential_value(credentials, "local_vector_db_json_secret", "local_vector_db_json"),
+            _get_credential_value(
+                credentials,
+                "local_vector_db_json_secret",
+                "local_vector_db_json",
+            ),
             "local_vector_db_json",
         )
 
         if llm is None:
-            msg = "LLM configuration (local_llm_json) is required in Local mode"
+            msg = "LLM configuration (local_llm_json_secret) is required in self-hosted mode"
             _raise_config_error(msg)
         if embedder is None:
-            msg = "Embedder configuration (local_embedder_json) is required in Local mode"
+            msg = "Embedder configuration (local_embedder_json_secret) is required in self-hosted mode"
             _raise_config_error(msg)
         if vector_store is None:
-            msg = "Vector Database configuration (local_vector_db_json) is required in Local mode"
+            msg = "Vector Database configuration (local_vector_db_json_secret) is required in self-hosted mode"
             _raise_config_error(msg)
 
         # Normalize pgvector config shape if necessary
@@ -364,7 +374,7 @@ def build_local_mem0_config(credentials: dict[str, Any]) -> dict[str, Any]:
             config["graph_store"] = graph_store
             logger.debug("Graph store configuration included")
 
-        logger.info("Mem0 local configuration built successfully")
+        logger.debug("Mem0 local configuration built successfully")
 
         # Cache the config if we have a valid cache key
         if cache_key:

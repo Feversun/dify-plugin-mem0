@@ -1,32 +1,51 @@
 """Common utility functions for Dify plugin tools."""
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from logging import Logger
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from logging import Logger
 
 
 def parse_timeout(
     value: object,
-    default: float,
+    default: int,
     logger: Logger | None = None,
     context: str = "operation",
-) -> float:
+) -> int:
     """Parse timeout value from tool parameters.
 
     Args:
         value: The timeout value from parameters (may be None, str, int, float).
-        default: Default timeout value if parsing fails or value is None.
+        default: Default timeout value if parsing fails or value is None (int).
         logger: Optional logger for warning messages.
         context: Context string for log messages (e.g., "search", "get").
 
     Returns:
-        Parsed timeout as float, or the default value.
+        Parsed timeout as int (seconds), or the default value.
 
     """
     if value is None:
         return default
 
     try:
-        return float(value)
+        # Convert to float first to support decimal input, then round to int
+        float_value = float(value)
+        # Round to nearest integer
+        int_value = round(float_value)
+        # Ensure non-negative
+        if int_value < 0:
+            if logger:
+                logger.warning(
+                    "Invalid timeout value for %s: %s (negative), using default: %s",
+                    context,
+                    value,
+                    default,
+                )
+            return default
+        return int_value
     except (TypeError, ValueError):
         if logger:
             logger.warning(

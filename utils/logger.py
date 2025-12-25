@@ -5,8 +5,40 @@ are properly output to the Dify plugin container using the official plugin logge
 """
 
 import logging
+import threading
 
 from dify_plugin.config.logger_format import plugin_logger_handler
+
+# Module-level log level cache (defaults to INFO)
+_log_level = logging.INFO
+_log_level_lock = threading.Lock()
+
+
+def set_log_level(level: str) -> None:
+    """Set global log level for all loggers.
+    
+    This function updates the log level for all existing loggers created by this module.
+    It is thread-safe and can be called at runtime to dynamically adjust log verbosity.
+    
+    Args:
+        level: Log level string (DEBUG, INFO, WARNING, ERROR)
+    
+    """
+    global _log_level
+    level_map = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+    }
+    
+    with _log_level_lock:
+        _log_level = level_map.get(level.upper(), logging.INFO)
+        # Update all existing loggers in tools and utils modules
+        for logger_name in logging.Logger.manager.loggerDict:
+            if logger_name.startswith("tools.") or logger_name.startswith("utils."):
+                existing_logger = logging.getLogger(logger_name)
+                existing_logger.setLevel(_log_level)
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -20,9 +52,14 @@ def get_logger(name: str) -> logging.Logger:
 
     """
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    
+    # Set to current global log level
+    with _log_level_lock:
+        logger.setLevel(_log_level)
+    
     # Only add handler if not already added to avoid duplicate logs
     if not logger.handlers:
         logger.addHandler(plugin_logger_handler)
+    
     return logger
 

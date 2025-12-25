@@ -36,7 +36,7 @@ This guide provides detailed installation and configuration instructions for the
 
 **Option B: Install from Package**
 1. Click `Upload Plugin` button
-2. Select the `.difypkg` file (e.g., `mem0ai-0.1.7.difypkg`)
+2. Select the `.difypkg` file (e.g., `mem0ai-0.1.8.difypkg`)
 3. Wait for upload and installation to complete
 
 ### Step 3: Verify Installation
@@ -68,20 +68,22 @@ First, select the operation mode in plugin credentials:
 After installation, click on the `mem0ai` plugin to configure it. You'll see credential fields that need to be filled.
 
 **Important Notes:**
-- **For New Installations**: Use the `[REQUIRED]` marked fields with `secret-input` type (encrypted fields) for better security
+- **For New Installations**: Use the `*_secret` fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`) with `secret-input` type (encrypted fields) for better security
+- **Deprecated Fields Removed**: Legacy `*_json` fields (e.g., `local_llm_json`, `local_embedder_json`) are no longer shown in the configuration UI. If you encounter configuration issues after upgrade, please delete old credentials and reconfigure using the new `*_secret` fields
 - **For Upgrades from v0.1.3**: See [Upgrade Guide](#upgrade-guide) for detailed upgrade instructions
 - All JSON configuration fields are displayed as **password fields** (hidden input) in the Dify UI to protect sensitive information
 - Each JSON must be a valid JSON object with the structure: `{ "provider": "<provider_name>", "config": { ... } }`
 - For detailed configuration options and supported providers, refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration)
 
 **Required Fields:**
-- `local_llm_json` - LLM provider configuration (JSON string)
-- `local_embedder_json` - Embedding model configuration (JSON string)
-- `local_vector_db_json` - Vector database configuration (JSON string)
+- `local_llm_json_secret` - LLM provider configuration (JSON string, encrypted)
+- `local_embedder_json_secret` - Embedding model configuration (JSON string, encrypted)
+- `local_vector_db_json_secret` - Vector database configuration (JSON string, encrypted)
 
 **Optional Fields:**
-- `local_graph_db_json` - Graph database configuration (JSON string, e.g., Neo4j)
-- `local_reranker_json` - Reranker configuration (JSON string)
+- `local_graph_db_json_secret` - Graph database configuration (JSON string, e.g., Neo4j, encrypted)
+- `local_reranker_json_secret` - Reranker configuration (JSON string, encrypted)
+- `log_level` - Log level for memory operations (INFO/DEBUG/WARNING/ERROR, default: INFO). Can be changed online without redeployment
 
 **How to Fill JSON Fields:**
 1. Copy the JSON example from the [Configuration Examples](#configuration-examples) section below
@@ -122,7 +124,7 @@ You can configure the following performance parameters in plugin settings to opt
 
 > **📚 Reference**: For detailed configuration options and supported providers, please refer to the [Mem0 Official Configuration Documentation](https://docs.mem0.ai/open-source/configuration).
 
-### LLM Configuration (`local_llm_json`)
+### LLM Configuration (`local_llm_json_secret`)
 
 **Azure OpenAI Example:**
 
@@ -174,7 +176,7 @@ You can configure the following performance parameters in plugin settings to opt
 }
 ```
 
-### Embedder Configuration (`local_embedder_json`)
+### Embedder Configuration (`local_embedder_json_secret`)
 
 **Azure OpenAI Example:**
 
@@ -221,7 +223,7 @@ You can configure the following performance parameters in plugin settings to opt
 
 **Note**: HuggingFace embedding models are automatically cached locally after first download.
 
-### Vector Store Configuration (`local_vector_db_json`)
+### Vector Store Configuration (`local_vector_db_json_secret`)
 
 **Option 1: Using Individual Parameters (Recommended for beginners)**
 
@@ -278,7 +280,7 @@ If you have a pre-configured psycopg2 connection pool, you can pass it directly.
 - Parameter priority: `connection_pool` > `connection_string` > individual parameters
 - If you provide both `connection_string` and individual parameters, `connection_string` takes precedence
 
-### Graph Store Configuration (`local_graph_db_json`) - Optional
+### Graph Store Configuration (`local_graph_db_json_secret`) - Optional
 
 **Neo4j Example:**
 
@@ -309,7 +311,7 @@ If you have a pre-configured psycopg2 connection pool, you can pass it directly.
 
 **Note**: Graph database is optional. If not configured, the plugin will work without graph memory features.
 
-### Reranker Configuration (`local_reranker_json`) - Optional
+### Reranker Configuration (`local_reranker_json_secret`) - Optional
 
 **Option 1: Cohere Reranker (API-based)**
 
@@ -362,6 +364,17 @@ If you have a pre-configured psycopg2 connection pool, you can pass it directly.
 ```
 
 **Note**: Sentence Transformer models are automatically cached locally after first download. The `sentence-transformers` library is included in default dependencies, so no manual installation is needed.
+
+### Log Level Configuration (`log_level`) - Optional
+
+The `log_level` field allows you to control the verbosity of memory operation logs without redeploying the plugin:
+
+- **INFO** (default): Standard logging level, shows important information and errors
+- **DEBUG**: Detailed logging for troubleshooting, includes request IDs and operation details
+- **WARNING**: Only shows warnings and errors
+- **ERROR**: Only shows errors
+
+**Important**: This setting can be changed online in the plugin credentials without requiring plugin redeployment. Changes take effect immediately for all subsequent operations.
 
 ## Quick Start: Testing Your Configuration
 
@@ -427,10 +440,8 @@ All read operations (Search/Get/Get_All/History) support user-configurable timeo
 
 ### Default Timeout Values
 
-- Search Memory: 30 seconds (configurable)
-- Get All Memories: 30 seconds (configurable)
-- Get Memory: 30 seconds (configurable)
-- Get Memory History: 30 seconds (configurable)
+- **Read Operations** (Search/Get/Get_All/History): 15 seconds (unified timeout, configurable)
+- **Write Operations** (Add/Update/Delete): 30 seconds (configurable)
 - `MAX_REQUEST_TIMEOUT`: 60 seconds
 
 **Note**: Sync mode has no timeout protection (blocking calls). If timeout protection is needed, use `async_mode=true`
@@ -443,7 +454,7 @@ All read operations (Search/Get/Get_All/History) support user-configurable timeo
 
 ### PGVector Configuration
 
-See the [Vector Store Configuration](#vector-store-configuration-local_vector_db_json) section above for detailed configuration options. Key points:
+See the [Vector Store Configuration](#vector-store-configuration-local_vector_db_json_secret) section above for detailed configuration options. Key points:
 
 - **Connection Pool**: Automatically configured with min=10, max=40 connections (configurable via performance parameters)
 - **Parameter Priority**: `connection_pool` > `connection_string` > individual parameters
@@ -454,8 +465,9 @@ See the [Vector Store Configuration](#vector-store-configuration-local_vector_db
 > 📖 **For complete upgrade instructions, including upgrading from v0.1.3 and installation time optimization details, see [README.md - Upgrade Guide](README.md#-upgrade-guide)**
 
 **Quick Summary:**
-- **Upgrading from v0.1.3**: Always upgrade to v0.1.7 for seamless compatibility (no action required). Avoid upgrading directly to v0.1.6 from v0.1.3.
-- **Installation Time**: v0.1.7 restores fast installation (~22 seconds) by removing `transformers` and `torch` dependencies. Local reranker users must manually install these dependencies.
+- **Upgrading to v0.1.8**: Deprecated `*_json` configuration fields are removed from UI. If you encounter configuration issues, delete old credentials and reconfigure using `*_secret` fields. New features include dynamic log level configuration and request tracing with `run_id`.
+- **Upgrading from v0.1.3**: Always upgrade to v0.1.7+ for seamless compatibility (no action required). Avoid upgrading directly to v0.1.6 from v0.1.3.
+- **Installation Time**: v0.1.7+ restores fast installation (~22 seconds) by removing `transformers` and `torch` dependencies. Local reranker users must manually install these dependencies.
 
 ## Troubleshooting
 
@@ -487,11 +499,12 @@ See the [Vector Store Configuration](#vector-store-configuration-local_vector_db
 **Problem**: Tools cannot be used
 - **Solution**:
   1. Verify that operation mode (`async_mode`) is selected (default: `true`)
-  2. Ensure all required fields are filled: `local_llm_json`, `local_embedder_json`, `local_vector_db_json`
-  3. Check that JSON structure is correct: `{ "provider": "...", "config": { ... } }`
-  4. Validate JSON syntax (no trailing commas, proper quotes, matching braces)
-  5. Validate all API keys and database connection information
-  6. Check plugin logs in Dify for specific error messages
+  2. Ensure all required fields are filled: `local_llm_json_secret`, `local_embedder_json_secret`, `local_vector_db_json_secret`
+  3. **If upgrading from older versions**: Delete old credentials and reconfigure using the new `*_secret` fields (legacy `*_json` fields are no longer supported)
+  4. Check that JSON structure is correct: `{ "provider": "...", "config": { ... } }`
+  5. Validate JSON syntax (no trailing commas, proper quotes, matching braces)
+  6. Validate all API keys and database connection information
+  7. Check plugin logs in Dify for specific error messages (set `log_level` to DEBUG for detailed troubleshooting)
 
 **Problem**: JSON parsing errors
 - **Solution**:
@@ -526,11 +539,17 @@ See the [Vector Store Configuration](#vector-store-configuration-local_vector_db
 - **Solution**:
   - Check logs for pending task counts
   - Reduce request frequency or increase `max_concurrent_memory_operations`
-  - Consider using faster models (cloud APIs instead of local models)
+  - Consider using faster models (cloud APIs instead of self-hosted models)
   - Monitor for "rejecting new memory operation" messages indicating system overload
 
 **Problem**: Upgrade from v0.1.3 causes Internal Server Error
-- **Solution**: See [Upgrade Guide](#upgrade-guide) for detailed instructions. In summary: Always upgrade to v0.1.7 for seamless compatibility (no action required).
+- **Solution**: See [Upgrade Guide](#upgrade-guide) for detailed instructions. In summary: Always upgrade to v0.1.7+ for seamless compatibility (no action required).
+
+**Problem**: Configuration fields not appearing or configuration errors after upgrade
+- **Solution**: 
+  1. Delete old credentials in Dify UI (Settings → Plugins → mem0ai → Delete Credentials)
+  2. Reconfigure using the new `*_secret` fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`)
+  3. Legacy `*_json` fields are no longer shown in the UI and should not be used
 
 ## Usage Examples
 
@@ -613,12 +632,13 @@ This section provides complete usage examples for all 8 tools. For a quick overv
 - `filters` and `metadata` must be valid JSON strings when provided (the client will automatically parse them)
 - `top_k` defaults to 5 if not specified for `search_memory`
 - All tool parameters are case-sensitive
+- **`run_id` Parameter** (optional): Recommended to use Dify's `workflow_run_id` to link multiple memory operations in the same workflow. **Important**: This parameter is only used for request tracing and logging; it is NOT used as a condition for memory layering or filtering
 - **`agent_id` Parameter**: When using `agent_id` in Dify workflows, you should use the **Dify application's `app_id`** (not `workflow_id`). This is because `workflow_id` changes every time you publish a workflow, while `app_id` remains stable and allows you to scope memories consistently across workflow versions
 - For runtime behavior details (async vs sync mode), see [Runtime Behavior](#runtime-behavior) section
 
 ## Additional Resources
 
-- **Privacy Policy**: See [PRIVACY.md](PRIVACY.md) for details about data handling in local mode
+- **Privacy Policy**: See [PRIVACY.md](PRIVACY.md) for details about data handling in self-hosted mode
 - **Changelog**: See [CHANGELOG.md](CHANGELOG.md) for detailed version history
 - **Main README**: See [README.md](README.md) for project overview and features
 - **Mem0 Official Docs**: https://docs.mem0.ai
