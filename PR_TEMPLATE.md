@@ -131,10 +131,11 @@ pip install transformers torch
   - All JSON configuration fields (`local_llm_json`, `local_embedder_json`, `local_vector_db_json`, `local_graph_db_json`, `local_reranker_json`) are now hidden in the UI
   - Sensitive information (API keys, passwords, tokens) is protected from accidental exposure
 
-- **⚙️ User-Configurable Performance Parameters**: Added three new optional configuration parameters for production environments
-  - `max_concurrent_memory_operations` - Control maximum concurrent async operations (default: 40, recommended > 20 for production)
+- **⚙️ User-Configurable Performance Parameters**: Added optional configuration parameters for production environments
+  - `max_concurrent_memory_operations` - Maximum concurrent memory operations (default: 40)
   - `pgvector_min_connections` - Set PGVector connection pool minimum size (default: 10)
-  - `pgvector_max_connections` - Set PGVector connection pool maximum size (default: 40, recommended to match max_concurrent_memory_operations)
+  - `pgvector_max_connections` - Set PGVector connection pool maximum size (default: 40, recommended to match total concurrency)
+  - **Concurrency Configuration Logic**: Validates all inputs with warning logs
 
 - **🐛 Bug Fixes**: Fixed Dify plugin framework compatibility issue (changed `type: number` to `type: text-input` for numeric configuration fields)
 

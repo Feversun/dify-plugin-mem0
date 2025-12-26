@@ -400,15 +400,57 @@ class AsyncLocalClient:
         self.memory = None
         # Async lock to protect one-time asynchronous initialization.
         self._create_lock = asyncio.Lock()
-        # Semaphore to limit the concurrency of memory operations. Users can
-        # optionally override the default via provider credentials;
-        # if not set or invalid, MAX_CONCURRENT_MEMORY_OPERATIONS from
-        # utils/constants.py is used.
-        self.max_ops = get_int_credential(
-            credentials,
-            "max_concurrent_memory_operations",
+
+        def _parse_concurrent_ops(raw: object, default: int, config_name: str) -> int:
+            """Parse concurrent operations config with validation and warning logging.
+
+            Args:
+                raw: Raw config value (may be None, empty string, or any type).
+                default: Default value to use if raw is invalid.
+                config_name: Name of the config for logging purposes.
+
+            Returns:
+                int: Valid integer value >= 1.
+
+            """
+            if raw in (None, ""):
+                logger.warning(
+                    "%s not set or empty, using default value: %d",
+                    config_name,
+                    default,
+                )
+                return max(1, default)
+
+            try:
+                value = int(raw)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "%s=%s cannot be converted to a positive integer, using default value: %d",
+                    config_name,
+                    raw,
+                    default,
+                )
+                return max(1, default)
+            else:
+                if value <= 0:
+                    logger.warning(
+                        "%s=%s is not a positive integer, using default value: %d",
+                        config_name,
+                        raw,
+                        default,
+                    )
+                    return max(1, default)
+                return value
+
+        # Parse config value
+        concurrent_ops_raw = credentials.get("max_concurrent_memory_operations")
+
+        self.max_ops = _parse_concurrent_ops(
+            concurrent_ops_raw,
             MAX_CONCURRENT_MEMORY_OPERATIONS,
+            "max_concurrent_memory_operations",
         )
+
         self._semaphore = asyncio.Semaphore(self.max_ops)
         # Toggle whether to use custom prompt
         self.use_custom_prompt = True

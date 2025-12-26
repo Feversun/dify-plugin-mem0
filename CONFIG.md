@@ -45,6 +45,9 @@ After installation, you should see the `mem0ai` plugin in your plugins list. The
 - `add_memory`, `search_memory`, `get_all_memories`, `get_memory`
 - `update_memory`, `delete_memory`, `delete_all_memories`, `get_memory_history`
 
+This plugin also provides a long-term memory consolidation tool:
+- `consolidate_long_term_memory`
+
 ## Configuration Steps
 
 ### Step 1: Choose Operation Mode
@@ -107,18 +110,27 @@ You can configure the following performance parameters in plugin settings to opt
 
 **Performance Parameters:**
 - `max_concurrent_memory_operations` - Maximum concurrent memory operations (default: 40)
-  - Controls the maximum number of concurrent async Mem0 operations per process
-  - Applies to all operations: search/add/get/get_all/update/delete/delete_all/history
-  - **Production recommendation**: Set to a value greater than 20
+  - Applies to all operations including search/add/get/get_all/update/delete/delete_all/history
+  - Must be a positive integer (>= 1)
+  - Invalid values (<= 0 or cannot be converted to integer) will use default value 40 with warning logs
 - `pgvector_min_connections` - PGVector minimum connections (default: 10)
   - Sets the minimum number of connections in the PGVector connection pool
+  - Must be a positive integer (>= 1)
 - `pgvector_max_connections` - PGVector maximum connections (default: 40)
   - Sets the maximum number of connections in the PGVector connection pool
+  - Must be greater than or equal to `pgvector_min_connections`
   - **Production recommendation**: Keep this value consistent with `max_concurrent_memory_operations`
+
+**Concurrency Configuration Logic:**
+- **`max_concurrent_memory_operations` configured**: Uses the configured value directly
+- **Not configured**: Uses default value (40)
+- **Invalid values** (cannot be converted to positive integers): Uses default values and logs a warning
+- **Unset or empty values**: Uses default values and logs a warning
 
 **Notes:**
 - If performance parameters are not configured, default values will be used
 - Performance parameters only apply when using PGVector as the vector database
+- Invalid or unset values trigger warning logs for better observability
 
 ## Configuration Examples
 
@@ -276,7 +288,7 @@ If you have a pre-configured psycopg2 connection pool, you can pass it directly.
 
 **Important Notes:**
 - If using individual parameters, `user` is required
-- The plugin automatically sets `minconn` and `maxconn` based on your `pgvector_min_connections` and `pgvector_max_connections` settings (or defaults: 10 and 40)
+- The plugin automatically sets `minconn` and `maxconn` based on your `pgvector_min_connections` (>= 1) and `pgvector_max_connections` (>= min_connections) settings (or defaults: 10 and 40)
 - Parameter priority: `connection_pool` > `connection_string` > individual parameters
 - If you provide both `connection_string` and individual parameters, `connection_string` takes precedence
 
@@ -530,9 +542,10 @@ See the [Vector Store Configuration](#vector-store-configuration-local_vector_db
 
 **Problem**: Slow operations
 - **Solution**:
-  - Increase `max_concurrent_memory_operations` for higher concurrency
+  - Increase `max_concurrent_memory_operations` as needed
   - Adjust `pgvector_max_connections` to match concurrent operations
   - Check database performance and connection pool settings
+  - See [Performance Parameters](#step-3-configure-performance-parameters-optional-recommended-for-production) for configuration details
 
 **Problem**: CPU usage at 99% or "Background task queue overloaded" warnings
 - **Cause**: Write operations (add/update/delete) are accumulating faster than they can complete
@@ -541,6 +554,14 @@ See the [Vector Store Configuration](#vector-store-configuration-local_vector_db
   - Reduce request frequency or increase `max_concurrent_memory_operations`
   - Consider using faster models (cloud APIs instead of self-hosted models)
   - Monitor for "rejecting new memory operation" messages indicating system overload
+
+**Problem**: Warning logs about invalid concurrency configuration values
+- **Cause**: Invalid or unset concurrency parameter values (cannot be converted to positive integers)
+- **Solution**:
+  - Check logs for specific warning messages indicating which parameter has an invalid value
+  - Ensure concurrency parameters are positive integers (minimum: 1, default: 40)
+  - Configure `max_concurrent_memory_operations` to control concurrency for all operations
+  - See [Performance Parameters](#step-3-configure-performance-parameters-optional-recommended-for-production) for detailed configuration logic
 
 **Problem**: Upgrade from v0.1.3 causes Internal Server Error
 - **Solution**: See [Upgrade Guide](#upgrade-guide) for detailed instructions. In summary: Always upgrade to v0.1.7+ for seamless compatibility (no action required).
@@ -581,6 +602,43 @@ This section provides complete usage examples for all 8 tools. For a quick overv
   "query": "user preferences",
   "user_id": "alex",
   "filters": "{\"AND\": [{\"user_id\": \"alex\"}, {\"agent_id\": \"scheduler\"}]}",
+  "top_k": 5
+}
+```
+
+### Consolidate Long Term Memory (Dify History → Mem0)
+
+This tool scans Dify conversation history for specified users up to `run_at`, extracts three subtypes
+of long-term memories, and writes them to Mem0:
+- `semantic`: stable preferences / enduring facts / long-term goals
+- `episodic`: notable events/outcomes that may be referenced later
+- `procedural`: reusable workflows/steps/rules
+
+Example payload:
+
+```json
+{
+  "run_at": "2025-12-23T00:00:00Z",
+  "user_ids": "[\"alex\",\"bob\"]",
+  "app_id": "your_dify_app_id",
+  "max_users_per_run": 100,
+  "budget_tokens": 200000,
+  "dify_base_url": "http://localhost:5001",
+  "dify_api_key": "your-dify-api-key"
+}
+```
+
+Important notes:
+- The tool uses Mem0 **checkpoint** memories stored in Mem0 itself for idempotency and resume.
+  These checkpoint items are marked as internal via `metadata.__internal=true` and are not intended
+  for user-facing retrieval.
+- If you use `search_memory` and want to exclude internal checkpoint items, add a NOT filter:
+
+```json
+{
+  "query": "alex preferences",
+  "user_id": "alex",
+  "filters": "{\"NOT\":[{\"__internal\":{\"eq\":true}}]}",
   "top_k": 5
 }
 ```

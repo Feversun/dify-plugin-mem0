@@ -20,6 +20,9 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 - ✅ **Delete All Memories** - Batch delete with filters
 - ✅ **Get Memory History** - View change history
 
+### Long-term Memory Consolidation (New)
+- ✅ **Consolidate Long Term Memory** - Incrementally scan Dify conversation history for specified users and consolidate long-term memories into Mem0 (semantic/episodic/procedural)
+
 ### Advanced Capabilities
 - 🖥️ **Self-Hosted Mode** - Run with Local Mem0 (JSON-based config)
 - 🧱 **Simplified Local Config** - 5 JSON blocks: LLM, Embedder, Vector DB, Graph DB (optional), Reranker (optional)
@@ -70,10 +73,11 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 ### Previous Updates (v0.1.6)
 - **Security Enhancement**: All sensitive configuration fields now use `secret-input` type to protect API keys and credentials in the Dify UI
   - All JSON configuration fields (`local_llm_json`, `local_embedder_json`, `local_vector_db_json`, `local_graph_db_json`, `local_reranker_json`) are now hidden in the UI
-- **User-Configurable Performance Parameters**: Added three new optional configuration parameters for production environments
-  - `max_concurrent_memory_operations` - Control maximum concurrent async operations (default: 40, recommended > 20 for production)
-  - `pgvector_min_connections` - Set PGVector connection pool minimum size (default: 10)
-  - `pgvector_max_connections` - Set PGVector connection pool maximum size (default: 40, recommended to match max_concurrent_memory_operations)
+- **User-Configurable Performance Parameters**: Added optional configuration parameters for production environments
+  - `max_concurrent_memory_operations` - Maximum concurrent memory operations (default: 40)
+  - `pgvector_min_connections` - Set PGVector connection pool minimum size (default: 10, must be >= 1)
+  - `pgvector_max_connections` - Set PGVector connection pool maximum size (default: 40, must be >= pgvector_min_connections, recommended to match total concurrency)
+  - **Concurrency Configuration Logic**: Validates all inputs with warning logs
 
 ### Previous Updates (v0.1.5)
 - **Search Memory Timestamp Support**: Added timestamp field to search results, displaying the most recent timestamp (created_at or updated_at) in second precision format (`2025-11-03T20:06:27`)
@@ -90,9 +94,9 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 
 ### Previous Updates (v0.1.3)
 - **Unified Logging Configuration**: Implemented centralized logging using Dify's official plugin logger handler to ensure all logs are properly output to the Dify plugin container for better debugging and monitoring.
-- **Database Connection Pool Optimization**: Added automatic connection pool settings for pgvector (min: 10, max: 40) to align with concurrent operation limits, ensuring sufficient database connections for high-concurrency scenarios.
+- **Database Connection Pool Optimization**: Added automatic connection pool settings for pgvector (min: 10, max: 20) to align with concurrent operation limits, ensuring sufficient database connections for high-concurrency scenarios.
 - **PGVector Configuration Enhancement**: Optimized pgvector configuration handling according to Mem0 official documentation, properly supporting parameter priority (connection_pool > connection_string > individual parameters) and automatically building connection strings from discrete parameters.
-- **Constant Naming Optimization**: Renamed `MAX_CONCURRENT_MEM_ADDS` to `MAX_CONCURRENT_MEMORY_OPERATIONS` (default: 40) to accurately reflect that it controls concurrency for all async memory operations, not just add operations.
+- **Constant Naming Optimization**: Renamed `MAX_CONCURRENT_MEM_ADDS` to `MAX_CONCURRENT_MEMORY_OPERATIONS` (default: 10) to accurately reflect that it controls concurrency for all async memory operations, not just add operations.
 
 ### Previous Updates (v0.1.2)
 - **Configurable Timeout Parameters**: All read operations (Search/Get/Get_All/History) now support user-configurable timeout values through the Dify plugin configuration interface. Timeout parameters are set as manual input fields (not exposed to LLM), allowing users to customize timeout behavior per tool based on their specific needs.
@@ -189,6 +193,25 @@ Once configured, all 8 tools are available in your workflows!
 | `delete_memory` | Delete single memory |
 | `delete_all_memories` | Batch delete memories |
 | `get_memory_history` | View change history |
+| `consolidate_long_term_memory` | Incrementally consolidate long-term memories from Dify history |
+
+### `consolidate_long_term_memory` Quick Example
+
+```json
+{
+  "run_at": "2025-12-23T00:00:00Z",
+  "user_ids": "[\"alex\",\"bob\"]",
+  "app_id": "your_dify_app_id",
+  "max_users_per_run": 100,
+  "budget_tokens": 200000,
+  "dify_base_url": "http://localhost:5001",
+  "dify_api_key": "your-dify-api-key"
+}
+```
+
+Notes:
+- The tool writes three memory subtypes and sets `metadata.memory_subtype` to `semantic|episodic|procedural`.
+- Checkpoints are stored in Mem0 as internal memories (`metadata.__internal=true`). If you later use `search_memory`, add a filter to exclude internal items.
 
 ---
 

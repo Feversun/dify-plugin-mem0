@@ -119,6 +119,12 @@ This release focuses on resolving CPU overload issues, implementing backward-com
   - Detects when LLM providers are mistakenly used in vector database configuration
   - Provides clear error messages before Mem0 validation fails
   - Improved help text in `mem0ai.yaml` with provider examples
+- **Concurrency Configuration Optimization**: Improved concurrent operations configuration handling
+  - Unified parsing logic with `_parse_concurrent_ops()` function for better code maintainability
+  - Added warning logs when invalid or unset values are detected (cannot be converted to positive integers)
+  - Unified concurrency control: `max_concurrent_memory_operations` applies to all operations including search
+  - Validates all input values and uses default value (40) when invalid or unset
+  - Enhanced observability with detailed warning messages for configuration issues
 - **Code Quality Improvements**:
   - Fixed recurring indentation errors in multiple tool files
   - Optimized code formatting (removed line length violations)
@@ -146,12 +152,17 @@ This release focuses on resolving CPU overload issues, implementing backward-com
   - Fixed credential default values: changed numeric defaults to string format ("40", "10")
   - Added comprehensive help text for all credential fields
   - Added validation for vector store provider type
+- **Concurrency Configuration Logic**:
+  - `max_concurrent_memory_operations` configured: Uses configured value directly
+  - Not configured: Uses default value (40)
+  - Invalid/unset values: Uses defaults with warning logs
+  - See [CONFIG.md](CONFIG.md#step-3-configure-performance-parameters-optional-recommended-for-production) for detailed documentation
 
 #### 📝 Files Changed
 - **Modified Files**:
   - `provider/mem0ai.yaml` - Reorganized credential fields, added backward-compatible schema, improved help text
   - `utils/config_builder.py` - Added `_get_credential_value()` for credential fallback logic, added vector store provider validation
-  - `utils/mem0_client.py` - Added task tracking system, changed `_max_ops` to `max_ops`, removed redundant cleanup logic
+  - `utils/mem0_client.py` - Added task tracking system, changed `_max_ops` to `max_ops`, removed redundant cleanup logic, optimized concurrency configuration parsing with unified validation and warning logs
   - `utils/constants.py` - Added `MAX_PENDING_TASKS_MULTIPLIER` constant
   - `tools/add_memory.py` - Added overload protection, task tracking, fixed indentation errors
   - `tools/update_memory.py` - Added overload protection, task tracking, fixed indentation errors
