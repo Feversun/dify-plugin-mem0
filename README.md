@@ -1,4 +1,4 @@
-# Mem0 Dify Plugin v0.1.8
+# Mem0 Dify Plugin v0.1.9
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dify Plugin](https://img.shields.io/badge/Dify-Plugin-blue)](https://dify.ai)
@@ -32,7 +32,22 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
 - 🌍 **Internationalized** - 中英双语 (Chinese/English)
 - ⚙️ **Async Mode Switch** - `async_mode` is enabled by default; Write ops (Add/Update/Delete) are non-blocking in async mode, Read ops (Search/Get/History) always wait; in sync mode all operations block until completion.
 
-### What's New (v0.1.8)
+### What's New (v0.1.9)
+- **Connection Stability & Resource Management**: Resolved critical production issues
+  - **TCP Connection Silent Timeout Prevention**: Implemented connection keep-alive mechanism
+    - Automatic periodic heartbeat requests to LLM, embedding, and vector store services
+    - Prevents TCP connections from being silently closed by network infrastructure
+    - Configurable heartbeat interval (default: 120 seconds, minimum: 30 seconds)
+  - **Connection Pool Memory Leak Prevention**: Implemented explicit resource cleanup
+    - Automatic cleanup of connection pools when client configuration changes
+    - Prevents memory leaks and connection pool exhaustion in long-running processes
+    - Proper lifecycle management for all database connections
+  - **PGVector Configuration Enhancement**: Improved connection pool management
+    - Automatic addition of TCP keepalive parameters to connection strings
+    - Two recommended configuration methods for production environments
+    - See [CONFIG.md](CONFIG.md#connection-stability--resource-management) for details
+
+### Previous Updates (v0.1.8)
 - **Dynamic Log Level Configuration**: Added runtime log level control without redeployment
   - New `log_level` credential field (INFO/DEBUG/WARNING/ERROR) for online adjustment
   - Thread-safe log level updates apply to all existing loggers immediately
@@ -49,10 +64,6 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
   - Legacy `*_json` fields (e.g., `local_llm_json`) are no longer shown in configuration UI
   - Only `*_secret` fields (e.g., `local_llm_json_secret`) are available for new installations
   - **Important**: If you encounter configuration issues after upgrade, please delete old credentials and reconfigure using the new `*_secret` fields
-- **Code Quality Improvements**:
-  - Improved logging with request ID tracking across all operations
-  - Better error messages with context information
-  - Optimized timeout handling with unified constants
 
 ### Previous Updates (v0.1.7)
 - **CPU Overload Protection**: Implemented comprehensive task queue monitoring and overload protection
@@ -75,9 +86,7 @@ A comprehensive Dify plugin that integrates [Mem0 AI](https://mem0.ai)'s intelli
   - All JSON configuration fields (`local_llm_json`, `local_embedder_json`, `local_vector_db_json`, `local_graph_db_json`, `local_reranker_json`) are now hidden in the UI
 - **User-Configurable Performance Parameters**: Added optional configuration parameters for production environments
   - `max_concurrent_memory_operations` - Maximum concurrent memory operations (default: 40)
-  - `pgvector_min_connections` - Set PGVector connection pool minimum size (default: 10, must be >= 1)
-  - `pgvector_max_connections` - Set PGVector connection pool maximum size (default: 40, must be >= pgvector_min_connections, recommended to match total concurrency)
-  - **Concurrency Configuration Logic**: Validates all inputs with warning logs
+  - **Note**: `pgvector_min_connections` and `pgvector_max_connections` were added in v0.1.6 but removed in v0.1.9. Configure connection pool size in vector store JSON config using `minconn` and `maxconn` instead (see [CONFIG.md](CONFIG.md#vector-store-configuration-local_vector_db_json_secret))
 
 ### Previous Updates (v0.1.5)
 - **Search Memory Timestamp Support**: Added timestamp field to search results, displaying the most recent timestamp (created_at or updated_at) in second precision format (`2025-11-03T20:06:27`)
@@ -138,7 +147,8 @@ After installation, you need to configure:
 1. **Operation Mode**: Choose between async (default, recommended for production) or sync mode (for testing)
 2. **Required JSON Configs**: `local_llm_json_secret`, `local_embedder_json_secret`, `local_vector_db_json_secret`
 3. **Optional Configs**: `local_graph_db_json_secret`, `local_reranker_json_secret`
-4. **Performance Parameters** (optional): `max_concurrent_memory_operations`, `pgvector_min_connections`, `pgvector_max_connections`
+4. **Performance Parameters** (optional): `max_concurrent_memory_operations`
+   - **Note**: PGVector connection pool settings (`minconn`, `maxconn`) are configured in the vector store JSON config, not as separate credential fields
 5. **Log Level** (optional): `log_level` (INFO/DEBUG/WARNING/ERROR, default: INFO) - can be changed online without redeployment
 
 **Note**: All JSON configuration fields are displayed as password fields (hidden input) in the Dify UI to protect sensitive information. Legacy `*_json` fields are no longer shown in the UI.
@@ -263,15 +273,68 @@ search(
 
 ## ⚠️ Upgrade Guide
 
-### Upgrading to v0.1.8
+### ⚠️ CRITICAL: Credentials Configuration Incompatibility
+
+**🔴 IMPORTANT**: The plugin has undergone **breaking changes** in credentials configuration that make old and new configurations **incompatible**. You **MUST** delete old credentials before upgrading to avoid configuration errors.
+
+#### Configuration Field Changes
+
+**Version History:**
+- **v0.1.3 and earlier**: Used `text-input` type fields (e.g., `local_llm_json`, `local_embedder_json`, `local_vector_db_json`)
+- **v0.1.6**: Changed to `secret-input` type fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`, `local_vector_db_json_secret`)
+- **v0.1.6**: Added `pgvector_min_connections` and `pgvector_max_connections` as separate credential fields
+- **v0.1.8+**: Removed legacy `*_json` fields completely, only `*_secret` fields are available
+- **v0.1.9+**: Removed `pgvector_min_connections` and `pgvector_max_connections` credential fields (now configured in vector store JSON)
+
+**Why This Causes Issues:**
+- Dify framework **cannot automatically migrate** credentials from `text-input` to `secret-input` type
+- Old credentials with `text-input` type will cause **Internal Server Error** or **configuration errors** when upgrading
+- The field names changed (e.g., `local_llm_json` → `local_llm_json_secret`), making them incompatible
+- Removed `pgvector_min_connections` and `pgvector_max_connections` fields will cause configuration errors if still present
+
+#### Required Upgrade Steps
+
+**⚠️ BEFORE UPGRADING, YOU MUST:**
+
+1. **Backup Your Configuration** (Optional but Recommended)
+   - Copy your current configuration values from Dify UI
+   - Save them in a secure location (they contain sensitive API keys and passwords)
+
+2. **Delete Old Credentials**
+   - Go to Dify UI: `Settings` → `Plugins` → `mem0ai`
+   - Click `Delete Credentials` or remove all existing credential values
+   - **This step is mandatory** - old credentials will cause errors after upgrade
+
+3. **Upgrade the Plugin**
+   - Install the new plugin version (v0.1.6 or later)
+   - Wait for installation to complete
+
+4. **Reconfigure Credentials**
+   - Go to `Settings` → `Plugins` → `mem0ai`
+   - Fill in all required fields using the **new `*_secret` field names**:
+     - `local_llm_json_secret` (was `local_llm_json`)
+     - `local_embedder_json_secret` (was `local_embedder_json`)
+     - `local_vector_db_json_secret` (was `local_vector_db_json`)
+     - `local_graph_db_json_secret` (was `local_graph_db_json`, optional)
+     - `local_reranker_json_secret` (was `local_reranker_json`, optional)
+   - **Important**: If you previously used `pgvector_min_connections` and `pgvector_max_connections` credential fields, you must now configure them in the `local_vector_db_json_secret` JSON config:
+     - Add `"minconn": 10` and `"maxconn": 40` to your pgvector config JSON (see [CONFIG.md](CONFIG.md#vector-store-configuration-local_vector_db_json_secret) for examples)
+     - These fields are no longer available as separate credential fields
+   - Use the same configuration values you backed up in step 1
+   - Save the configuration
+
+**⚠️ If You Skip Deleting Old Credentials:**
+- Plugin may fail to start
+- You may see "Internal Server Error" when accessing plugin settings
+- Tools may not work correctly
+- You will need to delete credentials and reconfigure anyway
+
+### Upgrading to v0.1.8+
 
 **⚠️ Important Configuration Changes:**
-- **Deprecated Fields Removed**: Legacy `*_json` configuration fields (e.g., `local_llm_json`, `local_embedder_json`) are no longer shown in the configuration UI
-- **New Fields Required**: Only `*_secret` fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`) are available for new installations
-- **If You Encounter Configuration Issues**: 
-  - Delete old credentials in Dify UI (Settings → Plugins → mem0ai → Delete Credentials)
-  - Reconfigure using the new `*_secret` fields
-  - This ensures a clean configuration state without legacy field conflicts
+- **Deprecated Fields Removed**: Legacy `*_json` configuration fields (e.g., `local_llm_json`, `local_embedder_json`) are **completely removed** from the configuration UI
+- **New Fields Required**: Only `*_secret` fields (e.g., `local_llm_json_secret`, `local_embedder_json_secret`) are available
+- **Mandatory Action**: You **MUST** delete old credentials and reconfigure using `*_secret` fields
 
 **New Features:**
 - **Dynamic Log Level**: You can now change log level (INFO/DEBUG/WARNING/ERROR) in plugin credentials without redeployment
@@ -280,27 +343,32 @@ search(
 
 ### Upgrading from v0.1.3
 
-**⚠️ Critical Issue**: If you upgrade from v0.1.3 directly to v0.1.6, you will encounter an **Internal Server Error** because:
-- v0.1.3 used `text-input` type for credential fields
-- v0.1.6 changed to `secret-input` type for the same fields
-- Dify framework cannot handle this type change on existing credentials
+**⚠️ Critical Issue**: If you upgrade from v0.1.3 directly to v0.1.6+, you will encounter an **Internal Server Error** because:
+- v0.1.3 used `text-input` type for credential fields (e.g., `local_llm_json`)
+- v0.1.6+ changed to `secret-input` type with different field names (e.g., `local_llm_json_secret`)
+- Dify framework **cannot handle this type and name change** on existing credentials
 
-**Two Solutions:**
+**Required Steps:**
 
-1. **✅ Recommended: Upgrade to v0.1.7 (Seamless)**
-   - v0.1.7 supports backward-compatible credential upgrades
-   - Your old `text-input` credentials will continue to work automatically
-   - **No action required** - just upgrade the plugin to v0.1.7
-   - Optionally migrate to new encrypted fields (`*_secret`) for enhanced security later
-   - This is the **recommended approach** for all users
+1. **✅ Delete Old Credentials First** (MANDATORY)
+   - Go to Dify UI: `Settings` → `Plugins` → `mem0ai` → `Delete Credentials`
+   - **Do this BEFORE upgrading** to avoid errors
 
-2. **Alternative: Delete and Reconfigure (for v0.1.6 upgrade)**
-   - **Only needed if upgrading directly to v0.1.6** (not recommended)
-   - Before upgrading, delete all existing plugin credentials in Dify UI
-   - Upgrade the plugin to v0.1.6 or v0.1.7
-   - Reconfigure all credentials using the new encrypted fields (`*_secret`)
+2. **Upgrade the Plugin**
+   - Install v0.1.6 or later version
+   - Wait for installation to complete
 
-**Summary**: Always upgrade to v0.1.7 for seamless compatibility. Avoid upgrading directly to v0.1.6 from v0.1.3.
+3. **Reconfigure Using New Fields**
+   - Go to `Settings` → `Plugins` → `mem0ai`
+   - Configure using the new `*_secret` fields:
+     - `local_llm_json_secret` (replaces `local_llm_json`)
+     - `local_embedder_json_secret` (replaces `local_embedder_json`)
+     - `local_vector_db_json_secret` (replaces `local_vector_db_json`)
+     - `local_graph_db_json_secret` (replaces `local_graph_db_json`, optional)
+     - `local_reranker_json_secret` (replaces `local_reranker_json`, optional)
+   - Use the same configuration values as before (just different field names)
+
+**Note**: v0.1.7 provides backward compatibility in code (can read old field names), but the UI only shows new fields. For cleanest upgrade, always delete old credentials and reconfigure.
 
 ### Installation Time Optimization
 
@@ -375,6 +443,7 @@ done
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.1.9 | 2025-12-26 | Connection stability & resource management: TCP silent timeout prevention, connection pool memory leak prevention, PGVector configuration enhancement |
 | v0.1.8 | 2025-12-25 | Dynamic log level configuration, timeout optimization, request tracing with run_id, configuration cleanup |
 | v0.1.7 | 2025-12-16 | CPU overload protection, seamless upgrade compatibility, configuration validation, code quality improvements |
 | v0.1.6 | 2025-12-08 | Security enhancement (secret-input for all configs), user-configurable performance parameters |

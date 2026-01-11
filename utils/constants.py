@@ -78,3 +78,8 @@ SEARCH_DEFAULT_TOP_K: int = 5
 # (multiple of MAX_CONCURRENT_MEMORY_OPERATIONS)
 # This prevents task queue from growing indefinitely when operations are slower than request rate
 MAX_PENDING_TASKS_MULTIPLIER: int = 5
+
+# Heartbeat interval (in seconds)
+# Used to prevent TCP connection silent timeout for LLM, embedding, and vector store services
+# Default: 120 seconds (2 minutes)
+HEARTBEAT_INTERVAL: int = 120

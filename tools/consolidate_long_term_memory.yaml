@@ -17,8 +17,8 @@ parameters:
       en_US: Run At (ISO8601)
       zh_Hans: 运行截止时间（ISO8601）
     human_description:
-      en_US: Required. Only messages with created_at <= run_at will be processed.
-      zh_Hans: 必填。只处理 created_at <= run_at 的消息。
+      en_US: "Required. Only messages with created_at <= run_at will be processed."
+      zh_Hans: "必填。只处理 created_at <= run_at 的消息。"
     llm_description: Required ISO8601 timestamp cutoff for processing.
     form: llm
   - name: user_ids
@@ -63,8 +63,8 @@ parameters:
       en_US: Budget Tokens
       zh_Hans: Token 总预算
     human_description:
-      en_US: Optional total token budget for this run (default 200000). Priority: semantic > episodic > procedural.
-      zh_Hans: 可选。单次运行 token 总预算（默认 200000）。优先级：semantic > episodic > procedural。
+      en_US: "Optional total token budget for this run (default 200000). Priority: semantic > episodic > procedural."
+      zh_Hans: "可选。单次运行 token 总预算（默认 200000）。优先级：semantic > episodic > procedural。"
     llm_description: Optional total token budget for this run.
     form: form
   - name: dify_base_url
@@ -74,8 +74,8 @@ parameters:
       en_US: Dify Base URL
       zh_Hans: Dify Base URL
     human_description:
-      en_US: Required. Example: http://localhost:5001
-      zh_Hans: 必填。例如：http://localhost:5001
+      en_US: "Required. Example: http://localhost:5001"
+      zh_Hans: "必填。例如：http://localhost:5001"
     llm_description: Required Dify base URL for API calls.
     form: llm
   - name: dify_api_key

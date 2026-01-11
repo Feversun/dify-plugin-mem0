@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from utils.mem0_client import AsyncLocalClient
+from utils.mem0_client import AsyncMem0Client
 
 
 class FakeAsyncMemory:
@@ -27,14 +27,14 @@ def test_search_timeout_covers_create(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mem0_client, "build_local_mem0_config", lambda _c: {})
 
     async def _run() -> None:
-        client = AsyncLocalClient({})
+        client = AsyncMem0Client({})
 
-        async def _slow_create(self: AsyncLocalClient) -> object:  # noqa: ARG001
+        async def _slow_create(self: AsyncMem0Client) -> object:  # noqa: ARG001
             await asyncio.sleep(1.0)
             return object()
 
         # Force create() to be slow; search() should time out before using memory.
-        monkeypatch.setattr(client, "create", _slow_create.__get__(client, AsyncLocalClient))
+        monkeypatch.setattr(client, "create", _slow_create.__get__(client, AsyncMem0Client))
 
         with pytest.raises(asyncio.TimeoutError):
             await client.search({"query": "q", "user_id": "u"}, timeout_s=0.01)
@@ -48,7 +48,7 @@ def test_search_timeout_covers_semaphore_wait(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(mem0_client, "build_local_mem0_config", lambda _c: {})
 
     async def _run() -> None:
-        client = AsyncLocalClient({})
+        client = AsyncMem0Client({})
         client._semaphore = asyncio.Semaphore(1)  # noqa: SLF001
 
         mem = FakeAsyncMemory()

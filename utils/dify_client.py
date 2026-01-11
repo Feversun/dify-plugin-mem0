@@ -41,9 +41,11 @@ class DifyClient:
         self.api_key = (api_key or "").strip()
         self.timeout = float(timeout)
         if not self.base_url:
-            raise ValueError("base_url is required")
+            msg = "base_url is required"
+            raise ValueError(msg)
         if not self.api_key:
-            raise ValueError("api_key is required")
+            msg = "api_key is required"
+            raise ValueError(msg)
 
     def _get_json(self, path: str, params: dict[str, object]) -> dict[str, Any]:
         url = urllib.parse.urljoin(self.base_url + "/", path.lstrip("/"))

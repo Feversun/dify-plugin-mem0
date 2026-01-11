@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from utils.mem0_client import AsyncLocalClient
+from utils.mem0_client import AsyncMem0Client
 
 
 class FakeAsyncMemory:
@@ -72,7 +72,7 @@ def test_read_operations_tracked_in_bg_tasks(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(mem0_client, "build_local_mem0_config", lambda _c: {})
 
-    client = AsyncLocalClient({})
+    client = AsyncMem0Client({})
     fake_memory = FakeAsyncMemory()
     fake_memory.hold_duration = 0.2  # Hold operations longer to ensure they're tracked
 
@@ -132,7 +132,7 @@ def test_write_operations_tracked_in_bg_tasks(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(mem0_client, "build_local_mem0_config", lambda _c: {})
 
-    client = AsyncLocalClient({})
+    client = AsyncMem0Client({})
     fake_memory = FakeAsyncMemory()
     fake_memory.hold_duration = 0.2
 
@@ -191,7 +191,7 @@ def test_concurrent_operations_tracked(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(mem0_client, "build_local_mem0_config", lambda _c: {})
 
-    client = AsyncLocalClient({})
+    client = AsyncMem0Client({})
     fake_memory = FakeAsyncMemory()
     fake_memory.hold_duration = 0.3  # Hold longer to overlap operations
 
